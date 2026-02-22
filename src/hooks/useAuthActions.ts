@@ -20,6 +20,30 @@ export function useAuthActions() {
             })
 
             if (error) throw error
+
+            // --- Strict Active Session Logic ---
+            if (data?.user) {
+                // Check if the user is already logged in
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('is_logged_in')
+                    .eq('id', data.user.id)
+                    .single()
+
+                if (profile?.is_logged_in === 1) {
+                    // Block access, bounce them out
+                    await supabase.auth.signOut()
+                    throw new Error("Tú o alguien más ya tiene una sesión iniciada activa con esta cuenta.")
+                }
+
+                // Allow login, mark as active
+                await supabase
+                    .from('profiles')
+                    .update({ is_logged_in: 1 })
+                    .eq('id', data.user.id)
+            }
+            // --- End Logic ---
+
             // Force hard refresh to ensure clean state
             window.location.href = '/'
             return { data, error: undefined }
@@ -70,7 +94,7 @@ export function useAuthActions() {
         setError(null)
 
         try {
-            const { error } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email: signupEmail,
                 password: signupPassword,
                 options: {
@@ -82,6 +106,16 @@ export function useAuthActions() {
             })
 
             if (error) throw error
+
+            // --- Strict Active Session Logic ---
+            if (data?.user) {
+                // Set to active explicitly on register
+                await supabase
+                    .from('profiles')
+                    .update({ is_logged_in: 1 })
+                    .eq('id', data.user.id)
+            }
+            // --- End Logic ---
 
             showAlert('Usuario registrado exitosamente!', 'success')
             return true

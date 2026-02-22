@@ -177,6 +177,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const signOut = async () => {
+        // Free up the active session flag BEFORE dropping token (so RLS Auth allows it)
+        try {
+            // Get current session explicitly since state might be out of sync
+            const { data: { session: currentSession } } = await supabase.auth.getSession()
+            if (currentSession?.user?.id) {
+                await supabase
+                    .from('profiles')
+                    .update({ is_logged_in: 0 })
+                    .eq('id', currentSession.user.id)
+            }
+        } catch (e) {
+            console.error("Failed to release session lock", e)
+        }
+
         // Clear Supabase Session
         await supabase.auth.signOut()
 
