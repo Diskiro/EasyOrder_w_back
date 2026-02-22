@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
 import {
@@ -169,15 +169,16 @@ function StatCard({ title, value, icon: Icon, color, trend }: any) {
     )
 }
 
-// ... (imports)
-
-// ... (fetch logic remains same)
-
-// ... (StatCard Component remains same, logic agnostic)
-
 export default function AdminDashboard() {
     const [timeRange, setTimeRange] = useState<TimeRange>('week')
     const { data, isLoading, error } = useDashboardData(timeRange)
+
+    // Fix for Recharts ResponsiveContainer warning during StrictMode/SSR
+    const [isMounted, setIsMounted] = useState(false)
+    useEffect(() => {
+        const timeout = setTimeout(() => setIsMounted(true), 50)
+        return () => clearTimeout(timeout)
+    }, [])
 
     if (isLoading) return <div className="p-8 text-gray-400">Cargando panel...</div>
     if (error) return <div className="p-8 text-red-500">Error al cargar panel</div>
@@ -251,44 +252,46 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="h-80 w-full" style={{ minHeight: 320, minWidth: 0 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <AreaChart data={chartData}>
-                                <defs>
-                                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#FBBF24" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="#9CA3AF"
-                                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <YAxis
-                                    stroke="#9CA3AF"
-                                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tickFormatter={(value) => `$${value}`}
-                                />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#141619', borderColor: '#374151', color: 'white' }}
-                                    itemStyle={{ color: '#FBBF24' }}
-                                    formatter={(value: any) => [`$${value}`, 'Ventas']}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="amount"
-                                    stroke="#FBBF24"
-                                    strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#colorSales)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {isMounted && (
+                            <ResponsiveContainer width="99%" height="100%" minWidth={0}>
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#FBBF24" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="#9CA3AF"
+                                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <YAxis
+                                        stroke="#9CA3AF"
+                                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tickFormatter={(value) => `$${value}`}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#141619', borderColor: '#374151', color: 'white' }}
+                                        itemStyle={{ color: '#FBBF24' }}
+                                        formatter={(value: any) => [`$${value}`, 'Ventas']}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="amount"
+                                        stroke="#FBBF24"
+                                        strokeWidth={3}
+                                        fillOpacity={1}
+                                        fill="url(#colorSales)"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 
