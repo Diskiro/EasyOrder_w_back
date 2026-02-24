@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useActiveOrders, useUpdateOrderStatus, useUpdateOrderItems, useOrderMutation } from './useOrders'
+import { useActiveOrders, useUpdateOrderStatus } from './useOrders'
 import { supabase } from '../lib/supabaseClient'
 
 vi.mock('../lib/supabaseClient', () => {
