@@ -8,9 +8,15 @@ const StatusBadge = ({ status }: { status: string }) => {
         ready: 'bg-green-900/40 text-green-400 border-green-700',
     }
 
+    const statusLabels: Record<string, string> = {
+        pending: 'Pendiente',
+        cooking: 'Cocinando',
+        ready: 'Listo'
+    }
+
     return (
         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${colors[status] || 'bg-gray-800'}`}>
-            {status}
+            {statusLabels[status] || status}
         </span>
     )
 }
@@ -120,9 +126,9 @@ export default function KitchenView() {
                   ${order.status === 'ready' ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : ''}
                 `}
                             >
-                                {order.status === 'pending' && <><Flame size={20} /> Start Cooking</>}
-                                {order.status === 'cooking' && <><CheckCircle size={20} /> Mark Ready</>}
-                                {order.status === 'ready' && <span>Waiting for Waiter</span>}
+                                {order.status === 'pending' && <><Flame size={20} /> Empezar a Cocinar</>}
+                                {order.status === 'cooking' && <><CheckCircle size={20} /> Entregar a Mesero</>}
+                                {order.status === 'ready' && <span>Esperando al Mesero</span>}
                             </button>
                         </div>
                     </div>
