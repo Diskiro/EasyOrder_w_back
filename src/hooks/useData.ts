@@ -203,6 +203,25 @@ export function useCashRegisterMutations() {
 }
 
 export function useTables() {
+    const queryClient = useQueryClient()
+
+    useEffect(() => {
+        const channel = supabase
+            .channel('tables-sync')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'tables' },
+                () => {
+                    queryClient.invalidateQueries({ queryKey: ['tables'] })
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [queryClient])
+
     return useQuery({
         queryKey: ['tables'],
         queryFn: async () => {
@@ -450,31 +469,6 @@ export function useTableMutations() {
 
     return { createTable, updateTable, deleteTable }
 }
-
-/*
-// ORIGINAL POLLING FUNCTION - Replaced by Realtime Subscription below
-export function useActiveOrders() {
-    return useQuery({
-        queryKey: ['orders', 'active'],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('orders')
-                .select(`
-                    *,
-                    table:tables(*),
-                    order_items:order_items(*, product:products(*))
-                `)
-                .neq('status', 'completed')
-                .neq('status', 'cancelled')
-                .order('created_at', { ascending: true })
-
-            if (error) throw error
-            return data as Order[]
-        },
-        refetchInterval: 5000 // Poll every 5 seconds for real-time-ish updates
-    })
-}
-*/
 
 export function useActiveOrders() {
     const queryClient = useQueryClient()
