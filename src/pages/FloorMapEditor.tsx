@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useTables, useTableMutations, type Table } from '../hooks/useData'
+import { useTables, useTableMutations, type Table } from '../hooks/useTables'
 import { Plus, Edit2, Trash2, X, Save, Square } from 'lucide-react'
 import { Button, IconButton, TextField, Grid } from '@mui/material'
 import { useUI } from '../context/UIContext'

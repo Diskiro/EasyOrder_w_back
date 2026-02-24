@@ -1,7 +1,7 @@
 import { Button, Stack } from '@mui/material'
 import { Plus } from 'lucide-react'
 import clsx from 'clsx'
-import type { Category, Product } from '../../hooks/useData'
+import type { Category, Product } from '../../hooks/useMenu'
 
 interface ProductMenuProps {
     categories: Category[] | undefined

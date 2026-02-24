@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import type { Table } from '../../hooks/useData'
+import type { Table } from '../../hooks/useTables'
 
 interface TableListProps {
     tables: Table[] | undefined

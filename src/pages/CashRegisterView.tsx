@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useCashRegister, useCashRegisterMutations } from '../hooks/useData';
+import { useCashRegister, useCashRegisterMutations } from '../hooks/useCashRegister';
 import { DollarSign, Lock, Unlock, AlertTriangle, Save, RefreshCw } from 'lucide-react';
 import { CircularProgress, Button, TextField, Snackbar, Alert } from '@mui/material';
 

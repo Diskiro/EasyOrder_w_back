@@ -1,5 +1,6 @@
 import clsx from 'clsx'
-import type { Table, Reservation } from '../../hooks/useData'
+import type { Table } from '../../hooks/useTables'
+import type { Reservation } from '../../hooks/useReservations'
 
 interface TableGridProps {
     tables: Table[] | undefined

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useReservations, useReservationMutations, type Reservation } from '../hooks/useData'
+import { useReservations, useReservationMutations, type Reservation } from '../hooks/useReservations'
 import { Search, Plus, CheckCircle, User, Clock, CalendarDays, ArrowRight } from 'lucide-react'
 import clsx from 'clsx'
 import { Button, Stack, Chip } from '@mui/material'

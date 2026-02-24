@@ -1,4 +1,4 @@
-import type { Product } from '../hooks/useData'
+import type { Product } from '../hooks/useMenu'
 
 export interface CartItem extends Product {
     quantity: number

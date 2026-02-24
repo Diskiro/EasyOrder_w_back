@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, IconButton, TextField } from '@mui/material'
 import { Edit2, Trash2, X } from 'lucide-react'
-import { useCategoryMutations, type Category } from '../../hooks/useData'
+import { useCategoryMutations, type Category } from '../../hooks/useMenu'
 import { useUI } from '../../context/UIContext'
 
 interface CategoryManagerProps {

@@ -1,4 +1,5 @@
-import { useActiveOrders, useTables, useUpdateOrderStatus, type Order } from '../hooks/useData'
+import { useActiveOrders, useUpdateOrderStatus, type Order } from '../hooks/useOrders'
+import { useTables } from '../hooks/useTables'
 import { Clock, CheckCircle, ChefHat, Bell, DollarSign, UtensilsCrossed, Edit } from 'lucide-react'
 import { Button } from '@mui/material'
 import { useNavigate } from 'react-router-dom'

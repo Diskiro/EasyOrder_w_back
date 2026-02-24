@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import ProductMenu from './ProductMenu'
-import type { Category, Product } from '../../hooks/useData'
+import type { Category, Product } from '../../hooks/useMenu'
 import '@testing-library/jest-dom'
 
 describe('ProductMenu', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useProducts, useCategories, type Product } from '../hooks/useData'
+import { useProducts, useCategories, type Product } from '../hooks/useMenu'
 import { Plus, Grid } from 'lucide-react'
 import { Button, Stack } from '@mui/material'
 

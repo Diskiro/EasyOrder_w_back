@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { IconButton, TextField, Box, FormControl, InputLabel, NativeSelect, Grid } from '@mui/material'
 import { Edit2, Trash2, Search, Image as ImageIcon } from 'lucide-react'
 import clsx from 'clsx'
-import type { Product, Category } from '../../hooks/useData'
+import type { Product, Category } from '../../hooks/useMenu'
 import { useUI } from '../../context/UIContext'
-import { useProductMutations } from '../../hooks/useData'
+import { useProductMutations } from '../../hooks/useMenu'
 
 interface ProductListProps {
     products: Product[] | undefined
