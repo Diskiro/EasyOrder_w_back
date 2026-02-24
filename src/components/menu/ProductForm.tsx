@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Button, IconButton, TextField, Box, FormControl, InputLabel, NativeSelect } from '@mui/material'
 import { X, Save } from 'lucide-react'
 import clsx from 'clsx'
-import { useProductMutations, type Product, type Category } from '../../hooks/useData'
+import { useProductMutations, type Product, type Category } from '../../hooks/useMenu'
 import { useUI } from '../../context/UIContext'
 import { useFormValidation } from '../../hooks/useFormValidation'
 

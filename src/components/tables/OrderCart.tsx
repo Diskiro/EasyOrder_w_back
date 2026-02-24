@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { Button } from '@mui/material'
 import { ShoppingCart, ChevronLeft, Minus, Plus } from 'lucide-react'
 import clsx from 'clsx'
-import type { Product, Order } from '../../hooks/useData'
+import type { Product } from '../../hooks/useMenu'
+import type { Order } from '../../hooks/useOrders'
 
 // Cart Item Type
 export interface CartItem extends Product {

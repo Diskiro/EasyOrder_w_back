@@ -1,6 +1,5 @@
-import { useActiveOrders, useUpdateOrderStatus } from '../hooks/useData'
-import type { Order } from '../hooks/useData'
-import { Clock, CheckCircle, Flame, ChefHat } from 'lucide-react'
+import { useActiveOrders, useUpdateOrderStatus, useUpdateOrderItemReady, type Order } from '../hooks/useOrders'
+import { Clock, CheckCircle, Flame, ChefHat, CheckSquare, Square } from 'lucide-react'
 
 const StatusBadge = ({ status }: { status: string }) => {
     const colors: Record<string, string> = {
@@ -17,10 +16,14 @@ const StatusBadge = ({ status }: { status: string }) => {
 }
 
 export default function KitchenView() {
-    const { data: orders, isLoading } = useActiveOrders()
+    const { data: allOrders, isLoading } = useActiveOrders()
     const updateStatus = useUpdateOrderStatus()
+    const updateItemReady = useUpdateOrderItemReady()
 
     if (isLoading) return <div className="p-8 text-white">Loading orders...</div>
+
+    // Filter out orders that are waiting for waiter ('ready') or completely finished ('delivered' / 'completed')
+    const orders = allOrders?.filter(o => o.status !== 'ready' && o.status !== 'delivered' && o.status !== 'completed') || []
 
     // Group by status for Kanban-like feel, or just list. 
     // Let's do a Grid of cards sorted by time.
@@ -83,13 +86,23 @@ export default function KitchenView() {
                         {/* Items */}
                         <div className="p-4 flex-1 space-y-3">
                             {order.order_items?.map((item) => (
-                                <div key={item.id} className="flex justify-between items-start border-b border-gray-800 pb-2 last:border-0">
-                                    <div className="flex gap-3">
+                                <div key={item.id} className="flex justify-between items-start border-b border-gray-800 pb-2 last:border-0 hover:bg-white/5 p-2 -mx-2 rounded transition-colors"
+                                    onClick={() => updateItemReady.mutate({ itemId: item.id, isReady: !item.is_ready, orderId: order.id })}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className={`flex gap-3 transition-opacity ${item.is_ready ? 'opacity-50 line-through' : 'opacity-100'}`}>
                                         <span className="font-bold text-lg text-blue-400 w-6">{item.quantity}x</span>
                                         <div>
                                             <span className="text-gray-200 font-medium block">{item.product?.name || 'Unknown Item'}</span>
-                                            {item.notes && <span className="text-sm text-yellow-500 italic">{item.notes}</span>}
+                                            {item.notes && <span className="text-sm text-yellow-500 italic mt-0.5">{item.notes}</span>}
                                         </div>
+                                    </div>
+                                    <div className="pt-1">
+                                        {item.is_ready ? (
+                                            <CheckSquare className="text-green-500" size={24} />
+                                        ) : (
+                                            <Square className="text-gray-500 hover:text-gray-300" size={24} />
+                                        )}
                                     </div>
                                 </div>
                             ))}

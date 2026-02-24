@@ -1,7 +1,10 @@
 
 import React, { useState, useMemo } from 'react'
 import { useUI } from '../context/UIContext'
-import { useTables, useCategories, useProducts, useOrderMutation, useActiveOrders, useUpdateOrderItems, useReservationMutations, useTableMutations, type Product, type Reservation, type Table } from '../hooks/useData'
+import { useTables, useTableMutations, type Table } from '../hooks/useTables'
+import { useCategories, useProducts, type Product } from '../hooks/useMenu'
+import { useOrderMutation, useActiveOrders, useUpdateOrderItems } from '../hooks/useOrders'
+import { useReservationMutations, type Reservation } from '../hooks/useReservations'
 import { useAuth } from '../context/AuthContext'
 import { Search, ShoppingCart, CheckCircle, LayoutGrid, List as ListIcon, ChevronLeft } from 'lucide-react'
 import { Button, ButtonGroup } from '@mui/material'
