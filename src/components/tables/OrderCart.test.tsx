@@ -5,6 +5,7 @@ import '@testing-library/jest-dom' // Ensure jest-dom matchers are available
 
 describe('OrderCart Component', () => {
     const mockOnUpdateQuantity = vi.fn()
+    const mockOnUpdateNote = vi.fn()
     const mockOnSubmit = vi.fn()
 
     it('calculates and displays the correct total price', () => {
@@ -45,6 +46,7 @@ describe('OrderCart Component', () => {
                 canEdit={true}
                 isLoading={false}
                 onUpdateQuantity={mockOnUpdateQuantity}
+                onUpdateNote={mockOnUpdateNote}
                 onSubmit={mockOnSubmit}
                 isMobile={false}
             />
@@ -64,6 +66,7 @@ describe('OrderCart Component', () => {
                 canEdit={true}
                 isLoading={false}
                 onUpdateQuantity={mockOnUpdateQuantity}
+                onUpdateNote={mockOnUpdateNote}
                 onSubmit={mockOnSubmit}
                 isMobile={false}
             />
