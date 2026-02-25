@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
 
@@ -11,25 +10,6 @@ export interface Table {
 }
 
 export function useTables() {
-    const queryClient = useQueryClient()
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('tables-sync')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'tables' },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ['tables'] })
-                }
-            )
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(channel)
-        }
-    }, [queryClient])
-
     return useQuery({
         queryKey: ['tables'],
         queryFn: async () => {

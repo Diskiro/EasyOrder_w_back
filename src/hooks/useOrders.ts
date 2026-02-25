@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
 import type { Table } from './useTables'
@@ -27,65 +26,6 @@ export interface Order {
 }
 
 export function useActiveOrders() {
-    const queryClient = useQueryClient()
-
-    // Setup Supabase Realtime Subscription
-    useEffect(() => {
-        console.log('Setting up Realtime subscription for orders...')
-        const channel = supabase
-            .channel('active-orders-channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'orders' },
-                (payload) => {
-                    console.log('Realtime Order Update:', payload)
-                    queryClient.invalidateQueries({ queryKey: ['orders'] })
-                    queryClient.invalidateQueries({ queryKey: ['tables'] })
-                }
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'order_items' },
-                (payload) => {
-                    console.log('Realtime OrderItem Update:', payload)
-                    queryClient.invalidateQueries({ queryKey: ['orders'] })
-                }
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'tables' },
-                (payload) => {
-                    console.log('Realtime Table Update:', payload)
-                    queryClient.invalidateQueries({ queryKey: ['tables'] })
-                    queryClient.invalidateQueries({ queryKey: ['orders'] })
-                }
-            )
-            .subscribe()
-
-        return () => {
-            console.log('Cleaning up subscription...')
-            supabase.removeChannel(channel)
-        }
-    }, [queryClient])
-
-    // Extra robust: Refetch when window regains focus (Handle "tab change" explicitly)
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                queryClient.invalidateQueries({ queryKey: ['orders'] })
-                queryClient.invalidateQueries({ queryKey: ['tables'] })
-            }
-        }
-
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        window.addEventListener('focus', handleVisibilityChange)
-
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange)
-            window.removeEventListener('focus', handleVisibilityChange)
-        }
-    }, [queryClient])
-
     return useQuery({
         queryKey: ['orders', 'active'],
         queryFn: async () => {
