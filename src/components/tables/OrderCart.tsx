@@ -8,6 +8,7 @@ import type { Order } from '../../hooks/useOrders'
 // Cart Item Type
 export interface CartItem extends Product {
     quantity: number
+    notes?: string
 }
 
 interface OrderCartProps {
@@ -17,6 +18,7 @@ interface OrderCartProps {
     isMobile?: boolean
     isLoading: boolean
     onUpdateQuantity: (itemId: number, delta: number) => void
+    onUpdateNote: (itemId: number, note: string) => void
     onSubmit: () => void
     onClose?: () => void
     isOpen?: boolean
@@ -29,6 +31,7 @@ export default function OrderCart({
     isMobile = false,
     isLoading,
     onUpdateQuantity,
+    onUpdateNote,
     onSubmit,
     onClose
 }: OrderCartProps) {
@@ -45,7 +48,7 @@ export default function OrderCart({
             "bg-[#1F2329] border-l border-gray-800 flex flex-col shadow-2xl transition-all duration-300",
             isMobile
                 ? "fixed inset-y-0 right-0 z-[60] w-full md:w-[450px] h-full pt-16 md:pt-0"
-                : "w-80 rounded-2xl h-full border pt-16"
+                : "w-80 rounded-2xl h-full border"
         )}>
             <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1F2329] shrink-0"
                 style={isMobile ? {} : { borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}>
@@ -77,15 +80,30 @@ export default function OrderCart({
                     </div>
                 )}
                 {cart.map(item => (
-                    <div key={item.id} className="flex justify-between items-center bg-[#141619] p-3 rounded-lg border border-gray-800">
-                        <div className="flex-1 min-w-0 mr-2">
-                            <div className="text-sm font-bold text-gray-300 truncate">{item.name}</div>
-                            <div className="text-xs text-[#FBBF24]">${(item.price * item.quantity).toFixed(2)}</div>
+                    <div key={item.id} className="flex flex-col bg-[#141619] p-3 rounded-lg border border-gray-800">
+                        <div className="flex justify-between items-center">
+                            <div className="flex-1 min-w-0 mr-2">
+                                <div className="text-sm font-bold text-gray-300 truncate">{item.name}</div>
+                                <div className="text-xs text-[#FBBF24]">${(item.price * item.quantity).toFixed(2)}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center bg-gray-800 rounded">
+                                    <Button size="small" disabled={!canEdit} onClick={() => onUpdateQuantity(item.id, -1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Minus size={12} /></Button>
+                                    <span className="text-xs font-bold w-4 text-center text-white">{item.quantity}</span>
+                                    <Button size="small" disabled={!canEdit} onClick={() => onUpdateQuantity(item.id, 1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Plus size={12} /></Button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center bg-gray-800 rounded">
-                            <Button size="small" disabled={!canEdit} onClick={() => onUpdateQuantity(item.id, -1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Minus size={12} /></Button>
-                            <span className="text-xs font-bold w-4 text-center text-white">{item.quantity}</span>
-                            <Button size="small" disabled={!canEdit} onClick={() => onUpdateQuantity(item.id, 1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Plus size={12} /></Button>
+
+                        <div className="mt-2 pt-2 border-t border-gray-800/50">
+                            <input
+                                type="text"
+                                value={item.notes || ''}
+                                onChange={(e) => onUpdateNote(item.id, e.target.value)}
+                                placeholder="Ej. Sin cebolla, extra picante..."
+                                className="w-full bg-black/50 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 transition-colors"
+                                disabled={!canEdit}
+                            />
                         </div>
                     </div>
                 ))}
