@@ -46,46 +46,42 @@ const useDashboardData = (timeRange: TimeRange) => {
             // Note: The top cards usually show "Today's Status", regardless of the chart filter.
             // We will keep the stats queries focused on "Right Now" / "Today".
 
-            // 1a. Today's Sales
-            const { data: todaysOrders, error: ordersError } = await supabase
-                .from('orders')
-                .select('total_amount, status, created_at')
-                .gte('created_at', startOfToday)
-                .lte('created_at', endOfToday)
+            // Parallelize all 5 Independent Queries to avoid waterfall latency
+            const [
+                { data: todaysOrders, error: ordersError },
+                { count: activeOrdersCount, error: activeError },
+                { count: productsCount, error: productsError },
+                { count: staffCount, error: staffError },
+                { data: chartOrders, error: chartError }
+            ] = await Promise.all([
+                supabase
+                    .from('orders')
+                    .select('total_amount, status, created_at')
+                    .gte('created_at', startOfToday)
+                    .lte('created_at', endOfToday),
+                supabase
+                    .from('orders')
+                    .select('*', { count: 'exact', head: true })
+                    .in('status', ['pending', 'cooking', 'ready']),
+                supabase
+                    .from('products')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('is_active', true),
+                supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true }),
+                supabase
+                    .from('orders')
+                    .select('total_amount, created_at')
+                    .gte('created_at', fetchStart)
+                    .lte('created_at', endOfToday)
+                    .order('created_at', { ascending: true })
+            ])
 
             if (ordersError) throw ordersError
-
-            // 1b. Active Orders
-            const { count: activeOrdersCount, error: activeError } = await supabase
-                .from('orders')
-                .select('*', { count: 'exact', head: true })
-                .in('status', ['pending', 'cooking', 'ready'])
-
             if (activeError) throw activeError
-
-            // 1c. Total Products
-            const { count: productsCount, error: productsError } = await supabase
-                .from('products')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_active', true)
-
             if (productsError) throw productsError
-
-            // 1d. Staff Count
-            const { count: staffCount, error: staffError } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-
             if (staffError) throw staffError
-
-            // 2. Fetch Chart Data (Dynamic Range)
-            const { data: chartOrders, error: chartError } = await supabase
-                .from('orders')
-                .select('total_amount, created_at')
-                .gte('created_at', fetchStart)
-                .lte('created_at', endOfToday)
-                .order('created_at', { ascending: true })
-
             if (chartError) throw chartError
 
             // --- Process Stats ---
