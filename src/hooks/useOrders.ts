@@ -169,7 +169,7 @@ export function useUpdateOrderItems() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ orderId, items }: { orderId: number, items: { productId: number, quantity: number, price: number }[] }) => {
+        mutationFn: async ({ orderId, items }: { orderId: number, items: { productId: number, quantity: number, price: number, notes?: string }[] }) => {
             const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
 
             // 1. Fetch existing items and order status
@@ -218,7 +218,8 @@ export function useUpdateOrderItems() {
                         .update({
                             quantity: item.quantity,
                             unit_price: item.price,
-                            is_ready: isQuantityIncreased ? false : existing.is_ready // Reset if increased
+                            is_ready: isQuantityIncreased ? false : existing.is_ready, // Reset if increased
+                            notes: item.notes || null // clear if undefined/empty
                         })
                         .eq('id', existing.id)
 
@@ -234,7 +235,8 @@ export function useUpdateOrderItems() {
                             product_id: item.productId,
                             quantity: item.quantity,
                             unit_price: item.price,
-                            is_ready: false
+                            is_ready: false,
+                            notes: item.notes || null
                         })
 
                     if (insertError) throw insertError
@@ -308,7 +310,7 @@ export function useOrderMutation() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ tableId, serverId, items }: { tableId: number, serverId: string, items: { productId: number, quantity: number, price: number }[] }) => {
+        mutationFn: async ({ tableId, serverId, items }: { tableId: number, serverId: string, items: { productId: number, quantity: number, price: number, notes?: string }[] }) => {
             const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
 
             const { data: order, error: orderError } = await supabase
@@ -328,7 +330,8 @@ export function useOrderMutation() {
                 order_id: order.id,
                 product_id: item.productId,
                 quantity: item.quantity,
-                unit_price: item.price
+                unit_price: item.price,
+                notes: item.notes || null
             }))
 
             const { error: itemsError } = await supabase
