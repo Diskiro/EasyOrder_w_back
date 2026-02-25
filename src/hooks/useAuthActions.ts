@@ -8,6 +8,7 @@ export function useAuthActions() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
+    const [overrideLock, setOverrideLock] = useState(false)
 
     const handleSignIn = async (_provider: AuthProvider, formData: any) => {
         try {
@@ -30,17 +31,23 @@ export function useAuthActions() {
                     .eq('id', data.user.id)
                     .single()
 
-                if (profile?.is_logged_in === 1) {
-                    // Block access, bounce them out
+                if (profile?.is_logged_in === 1 && !overrideLock) {
+                    // Block access but allow an escape hatch for timeouts
                     await supabase.auth.signOut()
-                    throw new Error("Tú o alguien más ya tiene una sesión iniciada activa con esta cuenta.")
+                    setOverrideLock(true)
+                    throw new Error("Ya hay una sesión iniciada en otro dispositivo (o sesión colgada). Pulsa 'Ingresar' de nuevo para FORZAR tu acceso.")
                 }
 
                 // Allow login, mark as active
-                await supabase
+                const { error: updateError } = await supabase
                     .from('profiles')
                     .update({ is_logged_in: 1 })
                     .eq('id', data.user.id)
+
+                if (updateError) {
+                    await supabase.auth.signOut()
+                    throw new Error("Error de conexión al verificar el servidor. Por favor intenta de nuevo.")
+                }
             }
             // --- End Logic ---
 
