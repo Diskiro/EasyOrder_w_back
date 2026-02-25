@@ -122,6 +122,13 @@ export default function TablesView() {
         }).filter(item => item.quantity > 0))
     }
 
+    const handleUpdateNote = (itemId: number, note: string) => {
+        if (!canEdit) return
+        setCart(prev => prev.map(item =>
+            item.id === itemId ? { ...item, notes: note } : item
+        ))
+    }
+
     const handleSubmitOrder = async () => {
         if (!selectedTableId || !user) return
         if (!canEdit) return
@@ -138,7 +145,8 @@ export default function TablesView() {
                     items: cart.map(item => ({
                         productId: item.id,
                         quantity: item.quantity,
-                        price: item.price
+                        price: item.price,
+                        notes: item.notes
                     }))
                 })
                 showAlert('Orden actualizada con éxito!', 'success')
@@ -149,7 +157,8 @@ export default function TablesView() {
                     items: cart.map(item => ({
                         productId: item.id,
                         quantity: item.quantity,
-                        price: item.price
+                        price: item.price,
+                        notes: item.notes
                     }))
                 })
                 showAlert('Orden creada con éxito!', 'success')
@@ -324,6 +333,7 @@ export default function TablesView() {
                                     canEdit={canEdit}
                                     isLoading={createOrder.isPending || updateOrderItems.isPending}
                                     onUpdateQuantity={handleUpdateQuantity}
+                                    onUpdateNote={handleUpdateNote}
                                     onSubmit={handleSubmitOrder}
                                 />
                             </div>
@@ -343,6 +353,7 @@ export default function TablesView() {
                                         canEdit={canEdit}
                                         isLoading={createOrder.isPending || updateOrderItems.isPending}
                                         onUpdateQuantity={handleUpdateQuantity}
+                                        onUpdateNote={handleUpdateNote}
                                         onSubmit={handleSubmitOrder}
                                         isMobile={true}
                                         onClose={() => setIsCartOpen(false)}
