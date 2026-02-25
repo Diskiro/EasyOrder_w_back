@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import { queryClient } from '../lib/queryClient'
@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [role, setRole] = useState<UserRole>(null)
     const [fullName, setFullName] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const lastFetchedUserId = useRef<string | null>(null)
 
     // 10 Hours in milliseconds
     const SESSION_TIMEOUT_MS = 10 * 60 * 60 * 1000
@@ -148,6 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [session])
 
     const fetchUserRole = async (userId: string) => {
+        if (lastFetchedUserId.current === userId) return
+        lastFetchedUserId.current = userId
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -171,6 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error(err)
             setRole('waiter')
             setFullName('User')
+            lastFetchedUserId.current = null // reset on error so it can retry
         } finally {
             setLoading(false)
         }
@@ -198,6 +202,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(null)
         setFullName(null)
         setSession(null)
+        lastFetchedUserId.current = null
         setUser(null)
 
         // Clear TanStack Query Cache to remove sensitive/stale data
