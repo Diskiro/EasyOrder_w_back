@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useGlobalRealtimeSync } from '../hooks/useGlobalRealtimeSync'
 import {
     LogOut,
     LayoutDashboard,
@@ -19,6 +20,9 @@ export default function Layout() {
     const navigate = useNavigate()
     const location = useLocation()
     const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+
+    // Initialize global realtime subscriptions exactly once
+    useGlobalRealtimeSync()
 
     const handleSignOut = async () => {
         await signOut()
