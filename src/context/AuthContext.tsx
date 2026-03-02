@@ -31,8 +31,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true)
     const lastFetchedUserId = useRef<string | null>(null)
 
-    // 10 Hours in milliseconds
-    const SESSION_TIMEOUT_MS = 10 * 60 * 60 * 1000
+    // 5 Minutes in milliseconds (for testing)
+    const SESSION_TIMEOUT_MS = 5 * 60 * 1000
 
     // Helper to check timeout
     const checkSessionTimeout = async (currentSession: Session | null) => {
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const now = new Date().getTime()
 
         if (now - lastSignIn > SESSION_TIMEOUT_MS) {
-            console.warn('Session expired (10 hours limit). Signing out and refreshing...')
+            console.warn('Session expired (5 minutes limit). Signing out and refreshing...')
 
             // Clear local state
             setSession(null)
