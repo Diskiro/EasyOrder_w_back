@@ -10,7 +10,7 @@ export function useAuthActions() {
     const [message, setMessage] = useState<string | null>(null)
     const [overrideLock, setOverrideLock] = useState(false)
 
-    const handleSignIn = async (_provider: AuthProvider, formData: any) => {
+    const handleSignIn = async (_provider: AuthProvider, formData: any, navigate?: (path: string) => void) => {
         try {
             const email = formData.get('email') as string
             const password = formData.get('password') as string
@@ -51,8 +51,12 @@ export function useAuthActions() {
             }
             // --- End Logic ---
 
-            // Force hard refresh to ensure clean state
-            window.location.href = '/'
+            // Use React Router for instant navigation if provided, fallback to hard refresh
+            if (navigate) {
+                navigate('/')
+            } else {
+                window.location.href = '/'
+            }
             return { data, error: undefined }
         } catch (error: any) {
             showAlert(error.message || 'Error al iniciar sesión', 'error')
