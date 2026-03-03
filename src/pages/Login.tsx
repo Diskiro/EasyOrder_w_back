@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppProvider } from '@toolpad/core/AppProvider'
 import { Box } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 
 import { darkTheme } from '../theme'
 import { useAuthActions } from '../hooks/useAuthActions'
+import { useAuth } from '../context/AuthContext'
 
 import { LoginForm } from '../components/auth/LoginForm'
 import { SignUpFlow } from '../components/auth/SignUpFlow'
@@ -14,9 +15,20 @@ export default function Login() {
     // Modes: 'signin' | 'signup' | 'recovery'
     const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin')
     const navigate = useNavigate()
+    const { user, loading } = useAuth()
+
+    // Redirect to home if user is already logged in
+    useEffect(() => {
+        if (!loading && user) {
+            navigate('/', { replace: true })
+        }
+    }, [user, loading, navigate])
 
     // Auth actions exposed by our custom hook
     const { handleSignIn } = useAuthActions()
+
+    // Don't render login form while checking auth or if user is already logged in
+    if (loading || user) return null
 
     return (
         <AppProvider theme={darkTheme}>
