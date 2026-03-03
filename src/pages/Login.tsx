@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AppProvider } from '@toolpad/core/AppProvider'
 import { Box } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 
 import { darkTheme } from '../theme'
 import { useAuthActions } from '../hooks/useAuthActions'
@@ -12,6 +13,7 @@ import { RecoveryForm } from '../components/auth/RecoveryForm'
 export default function Login() {
     // Modes: 'signin' | 'signup' | 'recovery'
     const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin')
+    const navigate = useNavigate()
 
     // Auth actions exposed by our custom hook
     const { handleSignIn } = useAuthActions()
@@ -32,7 +34,7 @@ export default function Login() {
             >
                 {mode === 'signin' && (
                     <LoginForm
-                        onSignIn={handleSignIn}
+                        onSignIn={(provider, formData) => handleSignIn(provider, formData, navigate)}
                         onRecoveryClick={() => setMode('recovery')}
                         onRegisterClick={() => setMode('signup')}
                     />
