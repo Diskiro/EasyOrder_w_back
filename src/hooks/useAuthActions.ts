@@ -11,6 +11,7 @@ export function useAuthActions() {
     const [overrideLock, setOverrideLock] = useState(false)
 
     const handleSignIn = async (_provider: AuthProvider, formData: any, navigate?: (path: string) => void) => {
+        setLoading(true)
         try {
             const email = formData.get('email') as string
             const password = formData.get('password') as string
@@ -61,6 +62,8 @@ export function useAuthActions() {
         } catch (error: any) {
             showAlert(error.message || 'Error al iniciar sesión', 'error')
             return { data: { user: null, session: null }, error: error.message }
+        } finally {
+            setLoading(false)
         }
     }
 

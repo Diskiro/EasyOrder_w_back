@@ -17,18 +17,18 @@ export default function Login() {
     const navigate = useNavigate()
     const { user, loading } = useAuth()
 
-    // Redirect to home if user is already logged in
+    // Auth actions exposed by our custom hook
+    const { handleSignIn, loading: actionLoading } = useAuthActions()
+
+    // Redirect to home if user is already logged in (and we aren't currently waiting for a login action to finish)
     useEffect(() => {
-        if (!loading && user) {
+        if (!loading && user && !actionLoading) {
             navigate('/', { replace: true })
         }
-    }, [user, loading, navigate])
+    }, [user, loading, actionLoading, navigate])
 
-    // Auth actions exposed by our custom hook
-    const { handleSignIn } = useAuthActions()
-
-    // Don't render login form while checking auth or if user is already logged in
-    if (loading || user) return null
+    // Don't render login form while checking global auth, or if user is set AND we are not mid-login check
+    if (loading || (user && !actionLoading)) return null
 
     return (
         <AppProvider theme={darkTheme}>
