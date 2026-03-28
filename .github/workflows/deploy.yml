@@ -1,42 +1,39 @@
-name: Vercel Preview/Production Deployment
-
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+name: CI/CD Pipeline & Security Scan
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  Deploy-to-Vercel:
+  # ------ JOB 1: Análisis de Seguridad (Se ejecuta en la Nube de GitHub) ------
+  sonarCloudAnalysis:
+    name: SonarCloud Security Scan
     runs-on: ubuntu-latest
-    environment: Production
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          fetch-depth: 0 # Necesario para el historial de Sonar
 
-      - name: Install Configuration
-        run: npm ci
-
-      - name: Setup and Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Ejecutar Análisis SonarCloud
+        uses: SonarSource/sonarcloud-github-action@master
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
 
-      - name: Deploy Project Artifacts to Vercel (Production)
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+  # ------ JOB 2: Despliegue (Se ejecuta DENTRO de tu red local Debian) ------
+  deploy:
+    name: Deploy Local Server
+    runs-on: self-hosted # Redirige la tubería a tu Debian local (josh)
+    needs: sonarCloudAnalysis # SRP: Solo despliega si Sonar aprueba el Quality Gate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Actualizar Código y Levantar Contenedores
+        # Multiples comandos separados por ;
+        run: |
+          cd /home/josh/Proyectos/EasyOrder_con_back ; git fetch origin ; git reset --hard origin/main
+          docker compose down ; docker compose pull ; docker compose up -d --build
+          docker image prune -f
