@@ -11,8 +11,12 @@ import ordersRouter from './routes/orders';
 import analyticsRouter from './routes/analytics';
 import reservationsRouter from './routes/reservations';
 import cashRegisterRouter from './routes/cash-register';
+import restaurantsRouter from './routes/restaurants';
 
 import { createCorsOptions, isOriginAllowed } from './config/cors';
+import { resolveTenant } from './middleware/tenant';
+import { requireActiveSubscription } from './middleware/subscription';
+import { requireFeature } from './middleware/featureGate';
 
 dotenv.config();
 
@@ -44,17 +48,22 @@ export const io = new Server(httpServer, {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Inquilinos y Control de Suscripciones (Multi-Tenant & Subscription Control)
+app.use(resolveTenant);
+app.use('/api', requireActiveSubscription);
+
 // Attach io to requests
 app.set('io', io);
 
-// Load Routers
+// Load Routers con Feature Gates
+app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/tables', tablesRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/orders', ordersRouter);
-app.use('/api/analytics', analyticsRouter);
-app.use('/api/reservations', reservationsRouter);
-app.use('/api/cash-register', cashRegisterRouter);
+app.use('/api/analytics', requireFeature('has_analytics'), analyticsRouter);
+app.use('/api/reservations', requireFeature('has_reservations'), reservationsRouter);
+app.use('/api/cash-register', requireFeature('has_cash_register'), cashRegisterRouter);
 
 // Basic healthcheck
 app.get('/api/health', async (req, res) => {
