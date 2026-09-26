@@ -35,7 +35,7 @@ export const io = new Server(httpServer, {
                 callback(new Error('CORS bloqueado para Socket.io'));
             }
         },
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
         credentials: true
     }
 });
