@@ -1,5 +1,29 @@
-// Use the current browser hostname safely to adapt to localhost or 127.0.0.1
-export const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:3000/api`;
+/**
+ * SRP: Determina de forma dinámica y segura la URL base de la API según el entorno
+ */
+export function resolveApiUrl(): string {
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+    }
+
+    if (typeof window !== 'undefined') {
+        const { protocol, hostname } = window.location;
+
+        // Entornos locales de desarrollo
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `${protocol}//${hostname}:3000/api`;
+        }
+
+        // Si se accede desde useeasyorder.com o cualquier subdominio (*.useeasyorder.com)
+        if (hostname === 'useeasyorder.com' || hostname.endsWith('.useeasyorder.com')) {
+            return `${protocol}//api.useeasyorder.com/api`;
+        }
+    }
+
+    return 'https://api.useeasyorder.com/api';
+}
+
+export const API_URL = resolveApiUrl();
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token');

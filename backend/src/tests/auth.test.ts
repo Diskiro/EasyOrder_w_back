@@ -11,6 +11,14 @@ jest.mock('../config/db', () => ({
     },
 }));
 
+// Mock bcryptjs
+jest.mock('bcryptjs', () => ({
+    compare: jest.fn().mockImplementation((password: string, hash: string) => {
+        return Promise.resolve(password === 'password123' && hash === 'hashed_secret');
+    }),
+    hash: jest.fn().mockResolvedValue('hashed_secret')
+}));
+
 const app = express();
 app.use(express.json());
 app.use('/api/auth', authRouter);
@@ -36,6 +44,7 @@ describe('Auth API Endpoints', () => {
             const mockUser = {
                 id: '123',
                 email: 'test@test.com',
+                password_hash: 'hashed_secret',
                 role: 'admin',
                 full_name: 'Test Admin',
                 is_logged_in: 0,
@@ -62,6 +71,8 @@ describe('Auth API Endpoints', () => {
         it('should reject login if user is already logged in on another device', async () => {
             const mockUser = {
                 id: '123',
+                email: 'test@test.com',
+                password_hash: 'hashed_secret',
                 is_logged_in: 1, // Already active
             };
 

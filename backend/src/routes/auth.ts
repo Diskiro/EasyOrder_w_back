@@ -14,7 +14,7 @@ router.post('/login', async (req, res) => {
         const { rows } = await pool.query('SELECT * FROM profiles WHERE email = $1', [email]);
         const user = rows[0];
 
-        if (!user) {
+        if (!user || !user.password_hash) {
             // Por seguridad, un mensaje genérico
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }

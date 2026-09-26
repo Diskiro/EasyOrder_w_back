@@ -12,6 +12,8 @@ import analyticsRouter from './routes/analytics';
 import reservationsRouter from './routes/reservations';
 import cashRegisterRouter from './routes/cash-register';
 
+import { createCorsOptions, isOriginAllowed } from './config/cors';
+
 dotenv.config();
 
 const app = express();
@@ -21,17 +23,25 @@ const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
     : ['http://localhost', 'http://127.0.0.1'];
 
+const corsOptions = createCorsOptions(allowedOrigins);
+
 // Setup Socket.io for Realtime
 export const io = new Server(httpServer, {
     cors: {
-        origin: true,
+        origin: (origin, callback) => {
+            if (isOriginAllowed(origin, allowedOrigins)) {
+                callback(null, true);
+            } else {
+                callback(new Error('CORS bloqueado para Socket.io'));
+            }
+        },
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         credentials: true
     }
 });
 
 // Middleware
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Attach io to requests

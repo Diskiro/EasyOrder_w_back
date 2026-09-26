@@ -5,11 +5,12 @@ services:
     image: postgres:15-alpine
     container_name: easyorder-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: supabase_dummy_password_123
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supabase_dummy_password_123}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     ports:
-      - "5432:5432"
+      # Restringido a localhost por seguridad para no exponer DB a la red local/externa
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -19,7 +20,7 @@ services:
     container_name: easyorder-adminer
     restart: always
     ports:
-      - 8080:8080
+      - "127.0.0.1:8080:8080"
     depends_on:
       - db
 
@@ -31,14 +32,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - PORT=3000
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=supabase_dummy_password_123
-      - DB_NAME=postgres
-      - JWT_SECRET=super_secret_jwt_key_for_easyorder
-      - CORS_ORIGIN=http://localhost,http://127.0.0.1
+      - PORT=${PORT:-3000}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-supabase_dummy_password_123}
+      - DB_NAME=${DB_NAME:-postgres}
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_for_easyorder}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost,http://127.0.0.1,https://useeasyorder.com,https://api.useeasyorder.com}
     depends_on:
       - db
     restart: unless-stopped
@@ -53,12 +54,23 @@ services:
     container_name: easyorder-frontend
     ports:
       - "80:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-https://api.useeasyorder.com/api}
     depends_on:
       - backend
     restart: unless-stopped
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: easyorder-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+      - backend
 
 volumes:
   pgdata:
