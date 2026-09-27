@@ -20,6 +20,17 @@ jobs:
         with:
           fetch-depth: 0 # Necesario para el historial de Sonar
 
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar Dependencias y Generar Cobertura LCOV (Backend)
+        run: |
+          cd backend ; npm ci ; npm test -- --coverage
+
       - name: Ejecutar Análisis SonarCloud
         uses: SonarSource/sonarqube-scan-action@v6
         env:
