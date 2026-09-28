@@ -3,7 +3,7 @@
  * validar y gestionar el slug del restaurante inquilino (tenant) en el frontend.
  */
 
-const RESERVED_SUBDOMAINS = ['api', 'admin', 'www', 'mail', 'app', 'localhost'];
+const RESERVED_SUBDOMAINS = new Set(['api', 'admin', 'www', 'mail', 'app', 'localhost']);
 const DEFAULT_TENANT_SLUG = 'demo';
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 
@@ -16,7 +16,7 @@ export function sanitizeTenantSlug(rawSlug: string | null | undefined): string |
     }
 
     const cleaned = rawSlug.trim().toLowerCase();
-    if (SLUG_REGEX.test(cleaned) && !RESERVED_SUBDOMAINS.includes(cleaned)) {
+    if (SLUG_REGEX.test(cleaned) && !RESERVED_SUBDOMAINS.has(cleaned)) {
         return cleaned;
     }
 

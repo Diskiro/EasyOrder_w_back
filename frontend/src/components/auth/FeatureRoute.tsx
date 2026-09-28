@@ -77,7 +77,7 @@ export const FeatureRoute: React.FC<FeatureRouteProps> = ({ feature, featureName
                             }
                         }}
                         endIcon={<ArrowRight size={18} />}
-                        onClick={() => window.open('https://useeasyorder.com', '_blank')}
+                        onClick={() => window.open('https://useeasyorder.com', '_blank', 'noopener,noreferrer')}
                     >
                         Solicitar Actualización de Plan
                     </Button>

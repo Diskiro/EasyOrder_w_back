@@ -75,7 +75,7 @@ export const SubscriptionExpiredView: React.FC = () => {
                 <Button
                     variant="contained"
                     startIcon={<PhoneCall size={18} />}
-                    onClick={() => window.open('mailto:soporte@useeasyorder.com', '_blank')}
+                    onClick={() => window.open('mailto:soporte@useeasyorder.com', '_blank', 'noopener,noreferrer')}
                     sx={{
                         bgcolor: tenant?.primary_color || '#FBBF24',
                         color: '#111315',

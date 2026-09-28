@@ -35,7 +35,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         'Content-Type': 'application/json',
         'X-Restaurant-Slug': tenantSlug,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...((options.headers as Record<string, string>) || {}),
+        ...(options.headers as Record<string, string>),
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, {
