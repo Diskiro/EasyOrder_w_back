@@ -103,4 +103,72 @@ router.patch('/:id/subscription', authenticateToken, async (req: TenantRequest, 
     }
 });
 
+/**
+ * SRP: Endpoint público/protegido para obtener el catálogo de planes de suscripción
+ */
+router.get('/plans', async (_req: TenantRequest, res: Response) => {
+    try {
+        const { rows } = await pool.query(
+            'SELECT * FROM subscription_plans ORDER BY price_monthly ASC'
+        );
+        res.json(rows);
+    } catch (error: any) {
+        res.status(500).json({ error: 'Error al consultar planes de suscripción' });
+    }
+});
+
+const RESERVED_SLUGS = new Set(['api', 'admin', 'www', 'mail', 'app', 'localhost']);
+const SLUG_REGEX = /^[a-z0-9-]+$/;
+
+/**
+ * SRP: Endpoint para que el SuperAdmin dé de alta un nuevo restaurante (Tenant)
+ */
+router.post('/', authenticateToken, async (req: TenantRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Acceso reservado para el SuperAdmin.' });
+        }
+
+        const { name, slug, plan_id, primary_color, logo_url, phone, address } = req.body;
+
+        if (!name || typeof name !== 'string' || name.trim().length < 2) {
+            return res.status(400).json({ error: 'El nombre del restaurante es obligatorio y debe tener al menos 2 caracteres.' });
+        }
+
+        if (!slug || typeof slug !== 'string') {
+            return res.status(400).json({ error: 'El identificador (slug) es obligatorio.' });
+        }
+
+        const cleanedSlug = slug.trim().toLowerCase();
+        if (!SLUG_REGEX.test(cleanedSlug) || RESERVED_SLUGS.has(cleanedSlug)) {
+            return res.status(400).json({
+                error: 'El slug solo puede contener letras minúsculas, números y guiones, y no puede usar palabras reservadas.'
+            });
+        }
+
+        // Verificar si el slug ya existe
+        const existing = await pool.query('SELECT id FROM restaurants WHERE slug = $1 LIMIT 1', [cleanedSlug]);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: `El subdominio "${cleanedSlug}" ya se encuentra registrado.` });
+        }
+
+        const targetPlan = plan_id || 'basico';
+        const targetColor = primary_color || '#FBBF24';
+
+        const { rows } = await pool.query(
+            `INSERT INTO restaurants (name, slug, plan_id, primary_color, logo_url, phone, address, status, subscription_expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW() + INTERVAL '30 days')
+             RETURNING *`,
+            [name.trim(), cleanedSlug, targetPlan, targetColor, logo_url || null, phone || null, address || null]
+        );
+
+        res.status(201).json({
+            message: 'Restaurante creado exitosamente',
+            restaurant: rows[0]
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: 'Error al registrar el nuevo restaurante' });
+    }
+});
+
 export default router;

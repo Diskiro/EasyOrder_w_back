@@ -16,6 +16,7 @@ import KitchenView from './pages/KitchenView'
 
 // Placeholder components
 import AdminDashboard from './pages/AdminDashboard'
+import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import StaffManagement from './pages/StaffManagement'
 import MenuEditor from './pages/MenuEditor'
 import FloorMapEditor from './pages/FloorMapEditor'
@@ -62,6 +63,11 @@ function AppRoutes() {
         <Route index element={<Navigate to={getDefaultRoute()} replace />} />
 
         {/* Admin Routes */}
+        <Route path="superadmin" element={
+          <ProtectedRoute requiredRole={['superadmin', 'admin']}>
+            <SuperAdminDashboard />
+          </ProtectedRoute>
+        } />
         <Route path="admin" element={
           <ProtectedRoute requiredRole={['admin']}>
             <FeatureRoute feature="has_analytics">
