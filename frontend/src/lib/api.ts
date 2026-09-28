@@ -1,3 +1,5 @@
+import { resolveActiveTenantSlug } from '../utils/tenant';
+
 /**
  * SRP: Determina de forma dinámica y segura la URL base de la API según el entorno
  */
@@ -27,10 +29,13 @@ export const API_URL = resolveApiUrl();
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token');
-    const headers = {
+    const tenantSlug = resolveActiveTenantSlug();
+
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'X-Restaurant-Slug': tenantSlug,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -40,9 +45,17 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'API request failed');
+        const error = new Error(errorData.message || errorData.error || 'API request failed') as any;
+        error.status = response.status;
+        error.code = errorData.error;
+
+        // Disparar evento para notificación global de corte de suscripción
+        if (response.status === 402 && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('subscription_error', { detail: errorData }));
+        }
+
+        throw error;
     }
 
-    // Not all responses will have parsable JSON (e.g., 204 No Content), but our node API always sends JSON objects.
     return response.json();
 };

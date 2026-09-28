@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { TenantProvider, useTenant } from './context/TenantContext'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { UIProvider } from './context/UIContext'
+import { FeatureRoute } from './components/auth/FeatureRoute'
+import { SubscriptionExpiredView } from './components/SubscriptionExpiredView'
 import Login from './pages/Login'
 import UpdatePassword from './pages/UpdatePassword'
 import Layout from './components/Layout'
@@ -21,7 +24,6 @@ import OrdersView from './pages/OrdersView'
 import CashRegisterView from './pages/CashRegisterView'
 import ReservationsView from './pages/ReservationsView'
 
-
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string[] }) {
   const { user, role, loading } = useAuth()
 
@@ -37,6 +39,12 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode,
 
 function AppRoutes() {
   const { role } = useAuth()
+  const { isSubscriptionBlocked } = useTenant()
+
+  // Si la suscripción del inquilino está vencida o suspendida, bloquear la interfaz
+  if (isSubscriptionBlocked) {
+    return <SubscriptionExpiredView />
+  }
 
   // Default redirect based on role
   const getDefaultRoute = () => {
@@ -56,7 +64,9 @@ function AppRoutes() {
         {/* Admin Routes */}
         <Route path="admin" element={
           <ProtectedRoute requiredRole={['admin']}>
-            <AdminDashboard />
+            <FeatureRoute feature="has_analytics">
+              <AdminDashboard />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="menu-editor" element={
@@ -88,19 +98,25 @@ function AppRoutes() {
         } />
         <Route path="reservations" element={
           <ProtectedRoute requiredRole={['admin', 'waiter']}>
-            <ReservationsView />
+            <FeatureRoute feature="has_reservations">
+              <ReservationsView />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="cash" element={
           <ProtectedRoute requiredRole={['admin', 'waiter']}>
-            <CashRegisterView />
+            <FeatureRoute feature="has_cash_register">
+              <CashRegisterView />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* Kitchen/Admin Routes */}
         <Route path="kitchen" element={
           <ProtectedRoute requiredRole={['admin', 'kitchen']}>
-            <KitchenView />
+            <FeatureRoute feature="has_kitchen_display">
+              <KitchenView />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
       </Route>
@@ -117,11 +133,13 @@ function App() {
       <UIProvider>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <AuthProvider>
-            <Router>
-              <AppRoutes />
-            </Router>
-          </AuthProvider>
+          <TenantProvider>
+            <AuthProvider>
+              <Router>
+                <AppRoutes />
+              </Router>
+            </AuthProvider>
+          </TenantProvider>
         </ThemeProvider>
       </UIProvider>
     </QueryClientProvider>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTenant } from '../context/TenantContext'
 import { useGlobalRealtimeSync } from '../hooks/useGlobalRealtimeSync'
 import {
     LogOut,
@@ -17,9 +18,12 @@ import { Button } from '@mui/material'
 
 export default function Layout() {
     const { role, fullName, signOut } = useAuth()
+    const { tenant, isFeatureEnabled } = useTenant()
     const navigate = useNavigate()
     const location = useLocation()
     const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+
+    const primaryColor = tenant?.primary_color || '#FBBF24'
 
     // Initialize global realtime subscriptions exactly once
     useGlobalRealtimeSync()
@@ -42,9 +46,10 @@ export default function Layout() {
                 className={clsx(
                     "relative group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 ease-out font-medium",
                     isActive
-                        ? "bg-[#FBBF24] text-black shadow-[0_0_15px_rgba(251,191,36,0.2)] font-bold translate-x-1"
+                        ? "text-black shadow-lg font-bold translate-x-1"
                         : "text-white hover:bg-[#1F2329]"
                 )}
+                style={isActive ? { backgroundColor: primaryColor, boxShadow: `0 0 15px ${primaryColor}40` } : undefined}
             >
                 <Icon size={20} className={clsx("relative z-10", isActive ? "scale-105" : "group-hover:scale-105")} />
                 <span className="relative z-10">{label}</span>
@@ -60,13 +65,17 @@ export default function Layout() {
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={() => setIsMobileOpen(true)}
-                        sx={{ minWidth: 'auto', p: 1, color: '#FBBF24' }}
+                        sx={{ minWidth: 'auto', p: 1, color: primaryColor }}
                     >
                         <Menu size={24} />
                     </Button>
                     <div className="flex flex-col">
-                        <h1 className="text-sm font-bold tracking-tight text-white leading-tight">EASY ORDER</h1>
-                        <p className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">RESTAURANT OS</p>
+                        <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
+                            {tenant?.name || 'EASY ORDER'}
+                        </h1>
+                        <p className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">
+                            {tenant?.slug || 'RESTAURANT OS'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -85,14 +94,20 @@ export default function Layout() {
                 isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
             )}>
                 <div className="h-16 flex items-center gap-3 px-6 border-b border-[#1F2329] shrink-0">
-                    <div className="bg-[#FBBF24] p-1.5 rounded-lg">
-                        <Grid className="text-black" size={20} />
+                    <div className="p-1.5 rounded-lg" style={{ backgroundColor: primaryColor }}>
+                        {tenant?.logo_url ? (
+                            <img src={tenant.logo_url} alt="Logo" className="w-5 h-5 object-contain" />
+                        ) : (
+                            <Grid className="text-black" size={20} />
+                        )}
                     </div>
-                    <div>
-                        <h1 className="text-lg font-bold tracking-tight text-white leading-tight">
-                            EASY ORDER
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-base font-bold tracking-tight text-white leading-tight truncate">
+                            {tenant?.name || 'EASY ORDER'}
                         </h1>
-                        <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">RESTAURANT OS</p>
+                        <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider truncate">
+                            {tenant?.slug ? `${tenant.slug} • ${tenant.plan_id}` : 'RESTAURANT OS'}
+                        </p>
                     </div>
                 </div>
 
@@ -102,7 +117,9 @@ export default function Layout() {
                     {role === 'admin' && (
                         <div className="mb-6">
                             <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Gestión</div>
-                            <NavItem to="/admin" icon={LayoutDashboard} label="Panel Control" />
+                            {isFeatureEnabled('has_analytics') && (
+                                <NavItem to="/admin" icon={LayoutDashboard} label="Panel Control" />
+                            )}
                             <NavItem to="/menu-editor" icon={Menu} label="Editar Menú" />
                             <NavItem to="/floor-map-editor" icon={Grid} label="Editar Mapa" />
                         </div>
@@ -113,14 +130,18 @@ export default function Layout() {
                         <div className="mb-6">
                             <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Servicio</div>
                             <NavItem to="/tables" icon={Grid} label="Mapa Mesas" />
-                            <NavItem to="/reservations" icon={CalendarDays} label="Reservas" />
+                            {isFeatureEnabled('has_reservations') && (
+                                <NavItem to="/reservations" icon={CalendarDays} label="Reservas" />
+                            )}
                             <NavItem to="/orders" icon={ClipboardList} label="Órdenes Activas" />
-                            <NavItem to="/cash" icon={DollarSign} label="Caja" />
+                            {isFeatureEnabled('has_cash_register') && (
+                                <NavItem to="/cash" icon={DollarSign} label="Caja" />
+                            )}
                         </div>
                     )}
 
                     {/* Kitchen / Admin Routes */}
-                    {(role === 'admin' || role === 'kitchen') && (
+                    {(role === 'admin' || role === 'kitchen') && isFeatureEnabled('has_kitchen_display') && (
                         <div className="mb-6">
                             <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Cocina</div>
                             <NavItem to="/kitchen" icon={ChefHat} label="Monitor Cocina" />
