@@ -203,4 +203,124 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
             expect(response.body.error).toBe('Error al actualizar la suscripción');
         });
     });
+
+    describe('GET /api/restaurants/plans', () => {
+        it('debe retornar el catálogo de planes ordenado', async () => {
+            const mockPlans = [
+                { id: 'basico', name: 'Plan Básico', price_monthly: 299 },
+                { id: 'pro', name: 'Plan Profesional', price_monthly: 599 }
+            ];
+
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: mockPlans });
+
+            const response = await request(app).get('/api/restaurants/plans');
+            expect(response.status).toBe(200);
+            expect(response.body).toHaveLength(2);
+            expect(response.body[0].id).toBe('basico');
+        });
+
+        it('debe responder 500 si ocurre error al consultar los planes', async () => {
+            (pool.query as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+
+            const response = await request(app).get('/api/restaurants/plans');
+            expect(response.status).toBe(500);
+            expect(response.body.error).toBe('Error al consultar planes de suscripción');
+        });
+    });
+
+    describe('POST /api/restaurants', () => {
+        it('debe responder 403 si el rol no es superadmin ni admin', async () => {
+            mockReqUser = { id: 'user-1', role: 'waiter' };
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Nuevo Rest', slug: 'nuevo-rest' });
+
+            expect(response.status).toBe(403);
+        });
+
+        it('debe responder 400 si el nombre es inválido o menor a 2 caracteres', async () => {
+            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({ name: ' ', slug: 'nuevo-rest' });
+
+            expect(response.status).toBe(400);
+            expect(response.body.error).toContain('nombre');
+        });
+
+        it('debe responder 400 si el slug es inválido o reservado', async () => {
+            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+
+            const resReserved = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Admin Hub', slug: 'admin' });
+            expect(resReserved.status).toBe(400);
+
+            const resInvalidChars = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Restaurante', slug: 'tacos;DROP' });
+            expect(resInvalidChars.status).toBe(400);
+
+            const resNoSlug = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Restaurante', slug: '' });
+            expect(resNoSlug.status).toBe(400);
+        });
+
+        it('debe responder 409 si el slug ya existe', async () => {
+            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: 'existing-id' }] });
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Taquería Existente', slug: 'taqueria-demo' });
+
+            expect(response.status).toBe(409);
+            expect(response.body.error).toContain('ya se encuentra registrado');
+        });
+
+        it('debe registrar exitosamente el restaurante con valores válidos', async () => {
+            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+
+            const createdRow = {
+                id: 'new-uuid',
+                name: 'Pizzería Bella',
+                slug: 'pizzeria-bella',
+                plan_id: 'pro',
+                status: 'active'
+            };
+
+            (pool.query as jest.Mock)
+                .mockResolvedValueOnce({ rows: [] }) // Verificación de slug existente
+                .mockResolvedValueOnce({ rows: [createdRow] }); // Inserción exitosa
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({
+                    name: 'Pizzería Bella',
+                    slug: 'pizzeria-bella',
+                    plan_id: 'pro',
+                    primary_color: '#E11D48'
+                });
+
+            expect(response.status).toBe(201);
+            expect(response.body.restaurant.slug).toBe('pizzeria-bella');
+        });
+
+        it('debe responder 500 en caso de fallo inesperado de base de datos', async () => {
+            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+
+            (pool.query as jest.Mock).mockRejectedValueOnce(new Error('Insert failed'));
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Rest', slug: 'rest-valido' });
+
+            expect(response.status).toBe(500);
+            expect(response.body.error).toBe('Error al registrar el nuevo restaurante');
+        });
+    });
 });

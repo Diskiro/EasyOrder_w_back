@@ -11,7 +11,8 @@ import {
     Menu,
     Grid,
     DollarSign,
-    CalendarDays
+    CalendarDays,
+    Building2
 } from 'lucide-react'
 import clsx from 'clsx'
 import { Button } from '@mui/material'
@@ -117,6 +118,7 @@ export default function Layout() {
                     {role === 'admin' && (
                         <div className="mb-6">
                             <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Gestión</div>
+                            <NavItem to="/superadmin" icon={Building2} label="Panel Maestro" />
                             {isFeatureEnabled('has_analytics') && (
                                 <NavItem to="/admin" icon={LayoutDashboard} label="Panel Control" />
                             )}
