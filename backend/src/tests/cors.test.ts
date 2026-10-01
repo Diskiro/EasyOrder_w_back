@@ -1,4 +1,4 @@
-import { isOriginAllowed } from '../config/cors';
+import { isOriginAllowed, createCorsOptions } from '../config/cors';
 
 describe('CORS Origin Validation (SRP & Security)', () => {
     const defaultAllowedOrigins = [
@@ -39,5 +39,13 @@ describe('CORS Origin Validation (SRP & Security)', () => {
         expect(isOriginAllowed('https://useeasyorder.com.attacker.com', defaultAllowedOrigins)).toBe(false);
         expect(isOriginAllowed('https://malicious-site.com', defaultAllowedOrigins)).toBe(false);
         expect(isOriginAllowed('not-a-valid-url', defaultAllowedOrigins)).toBe(false);
+    });
+
+    it('debe incluir cabeceras personalizadas de inquilino en allowedHeaders', () => {
+        const options = createCorsOptions(defaultAllowedOrigins);
+        expect(options.allowedHeaders).toContain('X-Restaurant-Slug');
+        expect(options.allowedHeaders).toContain('x-restaurant-slug');
+        expect(options.allowedHeaders).toContain('Authorization');
+        expect(options.allowedHeaders).toContain('Content-Type');
     });
 });
