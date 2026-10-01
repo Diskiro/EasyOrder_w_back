@@ -1,5 +1,8 @@
+import { Response } from 'express';
+import { pool } from '../config/db';
+
 /**
- * SRP: Funciones de utilidad para construcción segura de consultas SQL con aislamiento multi-tenant
+ * SRP: Funciones de utilidad para construcción y ejecución de consultas SQL con aislamiento multi-tenant
  */
 
 export interface QueryWithParams {
@@ -66,4 +69,56 @@ export function buildTenantDeleteQuery(
     }
 
     return { query, params };
+}
+
+/**
+ * SRP: Ejecuta de forma segura un UPDATE multi-tenant y envía la respuesta HTTP adecuada
+ */
+export async function executeTenantUpdate(
+    res: Response,
+    tableName: string,
+    id: string,
+    body: Record<string, any>,
+    tenantId: string | null,
+    notFoundMsg: string
+): Promise<void> {
+    const helper = buildTenantUpdateQuery(tableName, id, body, tenantId);
+    if (!helper) {
+        res.status(400).json({ error: 'No se enviaron campos para actualizar' });
+        return;
+    }
+
+    try {
+        const { rows } = await pool.query(helper.query, helper.params);
+        if (rows.length === 0) {
+            res.status(404).json({ error: notFoundMsg });
+            return;
+        }
+        res.json(rows[0]);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+/**
+ * SRP: Ejecuta de forma segura un DELETE multi-tenant y envía la respuesta HTTP adecuada
+ */
+export async function executeTenantDelete(
+    res: Response,
+    tableName: string,
+    id: string,
+    tenantId: string | null,
+    notFoundMsg: string
+): Promise<void> {
+    const helper = buildTenantDeleteQuery(tableName, id, tenantId);
+    try {
+        const result = await pool.query(helper.query, helper.params);
+        if (result.rowCount === 0) {
+            res.status(404).json({ error: notFoundMsg });
+            return;
+        }
+        res.json({ status: 'ok' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
 }

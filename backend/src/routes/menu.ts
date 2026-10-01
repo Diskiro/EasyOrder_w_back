@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { pool } from '../config/db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
-import { extractTargetTenantId, buildTenantUpdateQuery, buildTenantDeleteQuery } from '../utils/dbHelpers';
+import {
+    extractTargetTenantId,
+    executeTenantUpdate,
+    executeTenantDelete
+} from '../utils/dbHelpers';
 
 const router = Router();
 
@@ -52,39 +56,26 @@ router.post('/categories', authenticateToken, async (req: AuthRequest & TenantRe
 });
 
 router.patch('/categories/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const updateHelper = buildTenantUpdateQuery('categories', String(id), req.body, targetTenantId);
-
-    if (!updateHelper) {
-        return res.status(400).json({ error: 'No se enviaron campos para actualizar' });
-    }
-
-    try {
-        const { rows } = await pool.query(updateHelper.query, updateHelper.params);
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Categoría no encontrada o no pertenece a tu restaurante' });
-        }
-        res.json(rows[0]);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantUpdate(
+        res,
+        'categories',
+        String(req.params.id),
+        req.body,
+        targetTenantId,
+        'Categoría no encontrada o no pertenece a tu restaurante'
+    );
 });
 
 router.delete('/categories/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const deleteHelper = buildTenantDeleteQuery('categories', String(id), targetTenantId);
-
-    try {
-        const result = await pool.query(deleteHelper.query, deleteHelper.params);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Categoría no encontrada o no pertenece a tu restaurante' });
-        }
-        res.json({ status: 'ok' });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantDelete(
+        res,
+        'categories',
+        String(req.params.id),
+        targetTenantId,
+        'Categoría no encontrada o no pertenece a tu restaurante'
+    );
 });
 
 // -----------------------------------------------------------------------------
@@ -143,39 +134,26 @@ router.post('/products', authenticateToken, async (req: AuthRequest & TenantRequ
 });
 
 router.patch('/products/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const updateHelper = buildTenantUpdateQuery('products', String(id), req.body, targetTenantId);
-
-    if (!updateHelper) {
-        return res.status(400).json({ error: 'No se enviaron campos para actualizar' });
-    }
-
-    try {
-        const { rows } = await pool.query(updateHelper.query, updateHelper.params);
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Producto no encontrado o no pertenece a tu restaurante' });
-        }
-        res.json(rows[0]);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantUpdate(
+        res,
+        'products',
+        String(req.params.id),
+        req.body,
+        targetTenantId,
+        'Producto no encontrado o no pertenece a tu restaurante'
+    );
 });
 
 router.delete('/products/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const deleteHelper = buildTenantDeleteQuery('products', String(id), targetTenantId);
-
-    try {
-        const result = await pool.query(deleteHelper.query, deleteHelper.params);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Producto no encontrado o no pertenece a tu restaurante' });
-        }
-        res.json({ status: 'ok' });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantDelete(
+        res,
+        'products',
+        String(req.params.id),
+        targetTenantId,
+        'Producto no encontrado o no pertenece a tu restaurante'
+    );
 });
 
 export default router;

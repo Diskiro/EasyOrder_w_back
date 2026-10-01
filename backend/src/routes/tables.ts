@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { pool } from '../config/db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
-import { extractTargetTenantId, buildTenantUpdateQuery, buildTenantDeleteQuery } from '../utils/dbHelpers';
+import {
+    extractTargetTenantId,
+    executeTenantUpdate,
+    executeTenantDelete
+} from '../utils/dbHelpers';
 
 const router = Router();
 
@@ -63,40 +67,27 @@ router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res
 
 // Update table with tenant check
 router.patch('/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const updateHelper = buildTenantUpdateQuery('tables', String(id), req.body, targetTenantId);
-
-    if (!updateHelper) {
-        return res.status(400).json({ error: 'No se enviaron campos para actualizar' });
-    }
-
-    try {
-        const { rows } = await pool.query(updateHelper.query, updateHelper.params);
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Mesa no encontrada o no pertenece a tu restaurante' });
-        }
-        res.json(rows[0]);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantUpdate(
+        res,
+        'tables',
+        String(req.params.id),
+        req.body,
+        targetTenantId,
+        'Mesa no encontrada o no pertenece a tu restaurante'
+    );
 });
 
 // Delete table with tenant check
 router.delete('/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const { id } = req.params;
     const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    const deleteHelper = buildTenantDeleteQuery('tables', String(id), targetTenantId);
-
-    try {
-        const result = await pool.query(deleteHelper.query, deleteHelper.params);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Mesa no encontrada o no pertenece a tu restaurante' });
-        }
-        res.json({ status: 'ok' });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    await executeTenantDelete(
+        res,
+        'tables',
+        String(req.params.id),
+        targetTenantId,
+        'Mesa no encontrada o no pertenece a tu restaurante'
+    );
 });
 
 export default router;
