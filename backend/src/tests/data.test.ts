@@ -37,7 +37,7 @@ describe('Data APIs', () => {
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual(mockTables);
-            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM tables'));
+            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM tables'), expect.anything());
         });
     });
 
@@ -50,7 +50,7 @@ describe('Data APIs', () => {
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual(mockProducts);
-            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM products'));
+            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM products'), expect.anything());
         });
     });
 });

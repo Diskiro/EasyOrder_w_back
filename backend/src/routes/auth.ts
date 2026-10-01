@@ -3,19 +3,29 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { TenantRequest } from '../middleware/tenant';
+import {
+    validateRegisterInput,
+    validateRoleUpdate,
+    canUserAccessTenant,
+    isUserLimitReached
+} from '../utils/userValidation';
 
 const router = Router();
 
-// Login de Usuario
-router.post('/login', async (req, res) => {
+// Login de Usuario con Validación Multi-Tenant
+router.post('/login', async (req: TenantRequest, res) => {
     const { email, password, overrideLock } = req.body;
 
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+        return res.status(400).json({ error: 'Credenciales inválidas: email y contraseña requeridos' });
+    }
+
     try {
-        const { rows } = await pool.query('SELECT * FROM profiles WHERE email = $1', [email]);
+        const { rows } = await pool.query('SELECT * FROM profiles WHERE email = $1', [email.trim().toLowerCase()]);
         const user = rows[0];
 
         if (!user || !user.password_hash) {
-            // Por seguridad, un mensaje genérico
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
@@ -25,7 +35,16 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        // Comprobación de Sesión Activa (Misma lógica local que tenías en frontend)
+        // Validación de Aislamiento Multi-Tenant (El usuario debe pertenecer al restaurante del contexto o ser superadmin)
+        const currentTenantId = req.tenant?.id;
+        if (!canUserAccessTenant(user.restaurant_id, user.role, currentTenantId)) {
+            return res.status(403).json({
+                error: 'tenant_forbidden',
+                message: `El usuario no tiene autorización para acceder al restaurante "${req.tenant?.name || 'solicitado'}".`
+            });
+        }
+
+        // Comprobación de Sesión Activa
         if (user.is_logged_in === 1 && !overrideLock) {
             return res.status(403).json({ error: 'Ya hay una sesión iniciada en otro dispositivo.' });
         }
@@ -33,14 +52,23 @@ router.post('/login', async (req, res) => {
         // Actualizar base de datos
         await pool.query('UPDATE profiles SET is_logged_in = 1, last_sign_in_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
-        // Generar JWT
+        // Generar JWT incluyendo restaurant_id
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
+            { id: user.id, email: user.email, role: user.role, restaurant_id: user.restaurant_id },
             process.env.JWT_SECRET || 'super_secret_jwt_key_for_easyorder',
             { expiresIn: '10h' }
         );
 
-        res.json({ token, user: { id: user.id, email: user.email, role: user.role, full_name: user.full_name } });
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                full_name: user.full_name,
+                restaurant_id: user.restaurant_id
+            }
+        });
 
     } catch (error: any) {
         console.error('Error in login:', error);
@@ -51,7 +79,10 @@ router.post('/login', async (req, res) => {
 // Obtener info del usuario actual (Me)
 router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
     try {
-        const { rows } = await pool.query('SELECT id, email, full_name, role, is_logged_in FROM profiles WHERE id = $1', [req.user.id]);
+        const { rows } = await pool.query(
+            'SELECT id, email, full_name, role, is_logged_in, restaurant_id FROM profiles WHERE id = $1',
+            [req.user.id]
+        );
         res.json({ user: rows[0] });
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
@@ -60,33 +91,73 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
 
 // Verify Admin
 router.post('/verify-admin', authenticateToken, async (req: AuthRequest, res) => {
-    const { password } = req.body;
     try {
-        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo administradores.' });
-        // En migración real: await bcrypt.compare(password, <hash en db>)
-        // Por ahora lo saltamos dado que ya están autenticados como admin
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores.' });
+        }
         res.json({ status: 'ok' });
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
     }
 });
 
-// Admin Crear Usuario
-router.post('/register', authenticateToken, async (req: AuthRequest, res) => {
-    const { email, password, fullName, role } = req.body;
+// Admin Crear Usuario / Staff con Aislamiento y Control de Cuota
+router.post('/register', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     try {
-        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo administradores pueden crear usuarios.' });
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores pueden crear usuarios.' });
+        }
 
-        // Simular creación - Inyectar en postgres. En prod, usar bcrypt.
-        const id = crypto.randomUUID(); // Requires crypto, use raw uuid generation from postgres gen_random_uuid
+        const validation = validateRegisterInput(req.body);
+        if (!validation.isValid) {
+            return res.status(400).json({ error: validation.error });
+        }
+
+        const { email, password, fullName, role, restaurantId } = req.body;
+
+        // Un admin estándar no puede crear superadmins
+        if (role === 'superadmin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'No tienes permisos para crear usuarios superadmin.' });
+        }
+
+        // Determinar restaurant_id asignado
+        const targetRestaurantId = req.user.role === 'superadmin' && restaurantId
+            ? restaurantId
+            : (req.user.restaurant_id || req.tenant?.id);
+
+        if (!targetRestaurantId && role !== 'superadmin') {
+            return res.status(400).json({ error: 'Se requiere un restaurante válido para vincular al empleado.' });
+        }
+
+        // Validar límite de usuarios según el plan del restaurante
+        if (targetRestaurantId && req.tenant?.plan?.max_users) {
+            const countRes = await pool.query(
+                'SELECT COUNT(*) FROM profiles WHERE restaurant_id = $1',
+                [targetRestaurantId]
+            );
+            const currentCount = parseInt(countRes.rows[0].count, 10);
+            if (isUserLimitReached(currentCount, req.tenant.plan.max_users)) {
+                return res.status(400).json({
+                    error: 'user_limit_reached',
+                    message: `Has alcanzado el límite máximo de ${req.tenant.plan.max_users} usuarios para tu plan actual.`
+                });
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        await pool.query(
-            "INSERT INTO profiles (id, email, full_name, role, password_hash, is_logged_in) VALUES (gen_random_uuid(), $1, $2, $3, $4, 1)",
-            [email, fullName, role, hashedPassword]
+        const { rows } = await pool.query(
+            `INSERT INTO profiles (id, email, full_name, role, password_hash, is_logged_in, restaurant_id)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, $5)
+             RETURNING id, email, full_name, role, restaurant_id, created_at`,
+            [email.trim().toLowerCase(), fullName.trim(), role, hashedPassword, targetRestaurantId]
         );
-        res.json({ status: 'ok' });
+
+        res.status(201).json({ status: 'ok', user: rows[0] });
     } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') { // Postgres unique constraint violation
+            return res.status(409).json({ error: 'Ya existe un usuario con este correo electrónico.' });
+        }
+        res.status(500).json({ error: error.message || 'Error del servidor' });
     }
 });
 
@@ -100,25 +171,96 @@ router.post('/logout', authenticateToken, async (req: AuthRequest, res) => {
     }
 });
 
-// Cargar Staff (Admin)
-router.get('/staff', authenticateToken, async (req: AuthRequest, res) => {
+// Cargar Staff (Aislado por Restaurante)
+router.get('/staff', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     try {
-        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo administradores.' });
-        const { rows } = await pool.query('SELECT id, email, full_name, role, created_at FROM profiles ORDER BY created_at DESC');
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores.' });
+        }
+
+        const targetRestaurantId = req.user.role === 'superadmin' && !req.tenant?.id
+            ? null
+            : (req.user.restaurant_id || req.tenant?.id);
+
+        let query = 'SELECT id, email, full_name, role, restaurant_id, created_at FROM profiles';
+        const params: any[] = [];
+
+        if (targetRestaurantId) {
+            query += ' WHERE restaurant_id = $1';
+            params.push(targetRestaurantId);
+        }
+
+        query += ' ORDER BY created_at DESC';
+        const { rows } = await pool.query(query, params);
         res.json(rows);
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
     }
 });
 
-// Actualizar Rol Staff (Admin)
-router.patch('/staff/:id', authenticateToken, async (req: AuthRequest, res) => {
+// Actualizar Rol Staff (Aislado por Restaurante)
+router.patch('/staff/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { id } = req.params;
     const { role } = req.body;
+
+    const validation = validateRoleUpdate(role);
+    if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error });
+    }
+
     try {
-        if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo administradores.' });
-        await pool.query('UPDATE profiles SET role = $1 WHERE id = $2', [role, id]);
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores.' });
+        }
+
+        const targetRestaurantId = req.user.role === 'superadmin' ? null : (req.user.restaurant_id || req.tenant?.id);
+        let query = 'UPDATE profiles SET role = $1 WHERE id = $2';
+        const params: any[] = [role, id];
+
+        if (targetRestaurantId) {
+            query += ' AND restaurant_id = $3';
+            params.push(targetRestaurantId);
+        }
+
+        const result = await pool.query(query, params);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado o no pertenece a tu restaurante.' });
+        }
+
         res.json({ status: 'ok' });
+    } catch (error: any) {
+        res.status(500).json({ error: 'Error del servidor' });
+    }
+});
+
+// Eliminar Usuario Staff (Aislado por Restaurante)
+router.delete('/staff/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
+    const { id } = req.params;
+
+    try {
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Solo administradores.' });
+        }
+
+        if (id === req.user.id) {
+            return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' });
+        }
+
+        const targetRestaurantId = req.user.role === 'superadmin' ? null : (req.user.restaurant_id || req.tenant?.id);
+        let query = 'DELETE FROM profiles WHERE id = $1';
+        const params: any[] = [id];
+
+        if (targetRestaurantId) {
+            query += ' AND restaurant_id = $2';
+            params.push(targetRestaurantId);
+        }
+
+        const result = await pool.query(query, params);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado o no pertenece a tu restaurante.' });
+        }
+
+        res.json({ status: 'ok', message: 'Usuario eliminado correctamente' });
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
     }
@@ -127,6 +269,11 @@ router.patch('/staff/:id', authenticateToken, async (req: AuthRequest, res) => {
 // Cambiar Contraseña propia
 router.post('/change-password', authenticateToken, async (req: AuthRequest, res) => {
     const { password } = req.body;
+
+    if (!password || typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query('UPDATE profiles SET password_hash = $1 WHERE id = $2', [hashedPassword, req.user.id]);
@@ -137,3 +284,4 @@ router.post('/change-password', authenticateToken, async (req: AuthRequest, res)
 });
 
 export default router;
+
