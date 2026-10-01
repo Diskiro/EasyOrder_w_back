@@ -244,4 +244,99 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
             );
         });
     });
+
+    describe('GET /api/auth/me', () => {
+        it('debe retornar los datos del usuario actual', async () => {
+            mockUser = { id: 'user-me-1', role: 'waiter' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ id: 'user-me-1', email: 'me@demo.com', role: 'waiter', full_name: 'Yo Mismo' }]
+            });
+
+            const res = await request(app).get('/api/auth/me');
+            expect(res.status).toBe(200);
+            expect(res.body.user.email).toBe('me@demo.com');
+        });
+    });
+
+    describe('POST /api/auth/verify-admin', () => {
+        it('debe responder status ok para administradores', async () => {
+            mockUser = { id: 'admin-1', role: 'admin' };
+            const res = await request(app).post('/api/auth/verify-admin');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+        });
+
+        it('debe responder 403 para usuarios no administradores', async () => {
+            mockUser = { id: 'waiter-1', role: 'waiter' };
+            const res = await request(app).post('/api/auth/verify-admin');
+            expect(res.status).toBe(403);
+        });
+    });
+
+    describe('POST /api/auth/logout', () => {
+        it('debe cerrar sesión actualizando is_logged_in a 0', async () => {
+            mockUser = { id: 'user-1' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+            const res = await request(app).post('/api/auth/logout');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+            expect(pool.query).toHaveBeenCalledWith(
+                expect.stringContaining('UPDATE profiles SET is_logged_in = 0 WHERE id = $1'),
+                ['user-1']
+            );
+        });
+    });
+
+    describe('PATCH /api/auth/staff/:id', () => {
+        it('debe validar rol antes de actualizar', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            const res = await request(app).patch('/api/auth/staff/user-1').send({ role: 'invalid' });
+            expect(res.status).toBe(400);
+        });
+
+        it('debe actualizar rol con éxito', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+
+            const res = await request(app).patch('/api/auth/staff/user-1').send({ role: 'kitchen' });
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+        });
+    });
+
+    describe('DELETE /api/auth/staff/:id', () => {
+        it('debe impedir que el usuario elimine su propia cuenta', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            const res = await request(app).delete('/api/auth/staff/admin-1');
+            expect(res.status).toBe(400);
+        });
+
+        it('debe eliminar empleado del mismo restaurante', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+
+            const res = await request(app).delete('/api/auth/staff/user-2');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+        });
+    });
+
+    describe('POST /api/auth/change-password', () => {
+        it('debe validar longitud de contraseña mínima', async () => {
+            mockUser = { id: 'user-1' };
+            const res = await request(app).post('/api/auth/change-password').send({ password: '123' });
+            expect(res.status).toBe(400);
+        });
+
+        it('debe cambiar la contraseña exitosamente', async () => {
+            mockUser = { id: 'user-1' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+            const res = await request(app).post('/api/auth/change-password').send({ password: 'newSecurePassword123' });
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+        });
+    });
 });
+
