@@ -4,6 +4,7 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
 import {
     extractTargetTenantId,
+    fetchTenantRecords,
     executeTenantUpdate,
     executeTenantDelete
 } from '../utils/dbHelpers';
@@ -14,22 +15,8 @@ const router = Router();
 // CATEGORIES
 // -----------------------------------------------------------------------------
 router.get('/categories', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    try {
-        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-        let query = 'SELECT * FROM categories WHERE is_active = true';
-        const params: any[] = [];
-
-        if (targetTenantId) {
-            query += ' AND restaurant_id = $1';
-            params.push(targetTenantId);
-        }
-
-        query += ' ORDER BY sort_order ASC';
-        const { rows } = await pool.query(query, params);
-        res.json(rows);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+    await fetchTenantRecords(res, 'categories', 'sort_order ASC', targetTenantId, 'is_active = true');
 });
 
 router.post('/categories', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
@@ -82,22 +69,8 @@ router.delete('/categories/:id', authenticateToken, async (req: AuthRequest & Te
 // PRODUCTS
 // -----------------------------------------------------------------------------
 router.get('/products', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    try {
-        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-        let query = 'SELECT * FROM products';
-        const params: any[] = [];
-
-        if (targetTenantId) {
-            query += ' AND restaurant_id = $1';
-            params.push(targetTenantId);
-        }
-
-        query += ' ORDER BY name ASC';
-        const { rows } = await pool.query(query, params);
-        res.json(rows);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+    await fetchTenantRecords(res, 'products', 'name ASC', targetTenantId);
 });
 
 router.post('/products', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {

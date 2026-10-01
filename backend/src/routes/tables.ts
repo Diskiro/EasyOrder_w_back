@@ -4,6 +4,7 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
 import {
     extractTargetTenantId,
+    fetchTenantRecords,
     executeTenantUpdate,
     executeTenantDelete
 } from '../utils/dbHelpers';
@@ -12,22 +13,8 @@ const router = Router();
 
 // Retrieve all tables for current restaurant
 router.get('/', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    try {
-        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-        let query = 'SELECT * FROM tables';
-        const params: any[] = [];
-
-        if (targetTenantId) {
-            query += ' WHERE restaurant_id = $1';
-            params.push(targetTenantId);
-        }
-
-        query += ' ORDER BY number ASC';
-        const { rows } = await pool.query(query, params);
-        res.json(rows);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+    await fetchTenantRecords(res, 'tables', 'number ASC', targetTenantId);
 });
 
 // Create table with tenant assignment & quota check

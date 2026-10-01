@@ -72,6 +72,42 @@ export function buildTenantDeleteQuery(
 }
 
 /**
+ * SRP: Recupera registros de una tabla filtrados por inquilino y ordenamiento
+ */
+export async function fetchTenantRecords(
+    res: Response,
+    tableName: string,
+    orderBy: string,
+    tenantId: string | null,
+    baseWhere: string = ''
+): Promise<void> {
+    try {
+        let query = `SELECT * FROM "${tableName}"`;
+        const params: any[] = [];
+        const whereClauses: string[] = [];
+
+        if (baseWhere) {
+            whereClauses.push(baseWhere);
+        }
+
+        if (tenantId) {
+            params.push(tenantId);
+            whereClauses.push(`restaurant_id = $${params.length}`);
+        }
+
+        if (whereClauses.length > 0) {
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
+        }
+
+        query += ` ORDER BY ${orderBy}`;
+        const { rows } = await pool.query(query, params);
+        res.json(rows);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+/**
  * SRP: Ejecuta de forma segura un UPDATE multi-tenant y envía la respuesta HTTP adecuada
  */
 export async function executeTenantUpdate(
