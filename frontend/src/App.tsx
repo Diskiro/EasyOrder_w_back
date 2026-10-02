@@ -49,6 +49,7 @@ function AppRoutes() {
 
   // Default redirect based on role
   const getDefaultRoute = () => {
+    if (role === 'superadmin') return '/superadmin'
     if (role === 'admin') return '/admin'
     if (role === 'kitchen') return '/kitchen'
     return '/tables'
@@ -62,9 +63,9 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to={getDefaultRoute()} replace />} />
 
-        {/* Admin Routes */}
+        {/* SuperAdmin Master Route */}
         <Route path="superadmin" element={
-          <ProtectedRoute requiredRole={['superadmin', 'admin']}>
+          <ProtectedRoute requiredRole={['superadmin']}>
             <SuperAdminDashboard />
           </ProtectedRoute>
         } />

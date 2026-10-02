@@ -37,8 +37,8 @@ router.get('/current', async (req: TenantRequest, res: Response) => {
 router.get('/all', authenticateToken, async (req: TenantRequest, res: Response) => {
     try {
         // Solo el superadmin puede ver la lista global de todos los restaurantes
-        if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
-            return res.status(403).json({ error: 'Acceso reservado para el SuperAdmin.' });
+        if (req.user?.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Acceso reservado exclusivamente para el SuperAdmin.' });
         }
 
         const { rows } = await pool.query(
@@ -59,8 +59,8 @@ router.get('/all', authenticateToken, async (req: TenantRequest, res: Response) 
  */
 router.patch('/:id/subscription', authenticateToken, async (req: TenantRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
-            return res.status(403).json({ error: 'Acceso reservado para el SuperAdmin.' });
+        if (req.user?.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Acceso reservado exclusivamente para el SuperAdmin.' });
         }
 
         const { id } = req.params;
@@ -125,8 +125,8 @@ const SLUG_REGEX = /^[a-z0-9-]+$/;
  */
 router.post('/', authenticateToken, async (req: TenantRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'superadmin' && req.user?.role !== 'admin') {
-            return res.status(403).json({ error: 'Acceso reservado para el SuperAdmin.' });
+        if (req.user?.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Acceso reservado exclusivamente para el SuperAdmin.' });
         }
 
         const { name, slug, plan_id, primary_color, logo_url, phone, address } = req.body;

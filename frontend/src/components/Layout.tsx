@@ -12,7 +12,8 @@ import {
     Grid,
     DollarSign,
     CalendarDays,
-    Building2
+    Building2,
+    Users
 } from 'lucide-react'
 import clsx from 'clsx'
 import { Button } from '@mui/material'
@@ -114,16 +115,24 @@ export default function Layout() {
 
                 <nav className="flex-1 px-4 space-y-1 py-6 overflow-y-auto custom-scrollbar">
 
+                    {/* SuperAdmin Master Route */}
+                    {role === 'superadmin' && (
+                        <div className="mb-6">
+                            <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Plataforma</div>
+                            <NavItem to="/superadmin" icon={Building2} label="Panel Maestro" />
+                        </div>
+                    )}
+
                     {/* Admin Routes */}
                     {role === 'admin' && (
                         <div className="mb-6">
                             <div className="px-4 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2 ml-1">Gestión</div>
-                            <NavItem to="/superadmin" icon={Building2} label="Panel Maestro" />
                             {isFeatureEnabled('has_analytics') && (
                                 <NavItem to="/admin" icon={LayoutDashboard} label="Panel Control" />
                             )}
                             <NavItem to="/menu-editor" icon={Menu} label="Editar Menú" />
                             <NavItem to="/floor-map-editor" icon={Grid} label="Editar Mapa" />
+                            <NavItem to="/staff-management" icon={Users} label="Personal" />
                         </div>
                     )}
 

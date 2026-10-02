@@ -101,16 +101,24 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
     });
 
     describe('GET /api/restaurants/all', () => {
-        it('debe responder 403 si el rol no es superadmin ni admin', async () => {
+        it('debe responder 403 si el rol no es superadmin (ej. waiter)', async () => {
             mockReqUser = { id: 'waiter-1', role: 'waiter' };
 
             const response = await request(app).get('/api/restaurants/all');
             expect(response.status).toBe(403);
-            expect(response.body.error).toBe('Acceso reservado para el SuperAdmin.');
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
         });
 
-        it('debe retornar la lista completa de restaurantes si el rol es admin o superadmin', async () => {
-            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+        it('debe responder 403 si el rol es admin de inquilino en vez de superadmin', async () => {
+            mockReqUser = { id: 'admin-1', role: 'admin' };
+
+            const response = await request(app).get('/api/restaurants/all');
+            expect(response.status).toBe(403);
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
+        });
+
+        it('debe retornar la lista completa de restaurantes si el rol es superadmin', async () => {
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
 
             const mockRestaurants = [
                 { id: '1', slug: 'demo', name: 'Demo', plan_name: 'Plan Empresarial', price_monthly: 999 },
@@ -126,7 +134,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
         });
 
         it('debe responder 500 en caso de error en la consulta de base de datos', async () => {
-            mockReqUser = { id: 'admin-1', role: 'admin' };
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
             (pool.query as jest.Mock).mockRejectedValueOnce(new Error('DB failure'));
 
             const response = await request(app).get('/api/restaurants/all');
@@ -136,7 +144,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
     });
 
     describe('PATCH /api/restaurants/:id/subscription', () => {
-        it('debe responder 403 si el usuario no tiene permisos de administración', async () => {
+        it('debe responder 403 si el usuario es un mesero o personal operativo', async () => {
             mockReqUser = { id: 'chef-1', role: 'kitchen' };
 
             const response = await request(app)
@@ -144,10 +152,22 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
                 .send({ status: 'suspended' });
 
             expect(response.status).toBe(403);
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
+        });
+
+        it('debe responder 403 si el usuario es admin de restaurante en lugar de superadmin', async () => {
+            mockReqUser = { id: 'admin-1', role: 'admin' };
+
+            const response = await request(app)
+                .patch('/api/restaurants/rest-1/subscription')
+                .send({ status: 'suspended' });
+
+            expect(response.status).toBe(403);
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
         });
 
         it('debe responder 400 si no se envían campos válidos para actualizar', async () => {
-            mockReqUser = { id: 'admin-1', role: 'admin' };
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
 
             const response = await request(app)
                 .patch('/api/restaurants/rest-1/subscription')
@@ -158,7 +178,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
         });
 
         it('debe responder 404 si el restaurante especificado no existe', async () => {
-            mockReqUser = { id: 'admin-1', role: 'admin' };
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
             (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
 
             const response = await request(app)
@@ -170,7 +190,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
         });
 
         it('debe actualizar exitosamente el estado, plan y sumar días de vigencia', async () => {
-            mockReqUser = { id: 'admin-1', role: 'superadmin' };
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
 
             const updatedRow = {
                 id: 'rest-1',
@@ -192,7 +212,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
         });
 
         it('debe responder 500 si falla la actualización en base de datos', async () => {
-            mockReqUser = { id: 'admin-1', role: 'admin' };
+            mockReqUser = { id: 'superadmin-1', role: 'superadmin' };
             (pool.query as jest.Mock).mockRejectedValueOnce(new Error('Update failed'));
 
             const response = await request(app)
@@ -229,7 +249,7 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
     });
 
     describe('POST /api/restaurants', () => {
-        it('debe responder 403 si el rol no es superadmin ni admin', async () => {
+        it('debe responder 403 si el rol no es superadmin (ej. waiter)', async () => {
             mockReqUser = { id: 'user-1', role: 'waiter' };
 
             const response = await request(app)
@@ -237,6 +257,18 @@ describe('Restaurants API Endpoints (SRP & Multi-Tenant)', () => {
                 .send({ name: 'Nuevo Rest', slug: 'nuevo-rest' });
 
             expect(response.status).toBe(403);
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
+        });
+
+        it('debe responder 403 si el rol es admin de inquilino en lugar de superadmin', async () => {
+            mockReqUser = { id: 'admin-1', role: 'admin' };
+
+            const response = await request(app)
+                .post('/api/restaurants')
+                .send({ name: 'Nuevo Rest', slug: 'nuevo-rest' });
+
+            expect(response.status).toBe(403);
+            expect(response.body.error).toBe('Acceso reservado exclusivamente para el SuperAdmin.');
         });
 
         it('debe responder 400 si el nombre es inválido o menor a 2 caracteres', async () => {
