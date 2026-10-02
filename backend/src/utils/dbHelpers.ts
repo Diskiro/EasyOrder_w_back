@@ -1,5 +1,7 @@
 import { Response } from 'express';
 import { pool } from '../config/db';
+import { AuthRequest } from '../middleware/auth';
+import { TenantRequest } from '../middleware/tenant';
 
 /**
  * SRP: Funciones de utilidad para construcción y ejecución de consultas SQL con aislamiento multi-tenant
@@ -157,4 +159,34 @@ export async function executeTenantDelete(
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
+}
+
+/**
+ * Handler Factory SRP: Crea un controlador Express reutilizable para listar registros multi-tenant
+ */
+export function createTenantGetHandler(tableName: string, orderBy: string, baseWhere: string = '') {
+    return async (req: AuthRequest & TenantRequest, res: Response): Promise<void> => {
+        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+        await fetchTenantRecords(res, tableName, orderBy, targetTenantId, baseWhere);
+    };
+}
+
+/**
+ * Handler Factory SRP: Crea un controlador Express reutilizable para actualizar registros multi-tenant
+ */
+export function createTenantPatchHandler(tableName: string, notFoundMsg: string) {
+    return async (req: AuthRequest & TenantRequest, res: Response): Promise<void> => {
+        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+        await executeTenantUpdate(res, tableName, String(req.params.id), req.body, targetTenantId, notFoundMsg);
+    };
+}
+
+/**
+ * Handler Factory SRP: Crea un controlador Express reutilizable para eliminar registros multi-tenant
+ */
+export function createTenantDeleteHandler(tableName: string, notFoundMsg: string) {
+    return async (req: AuthRequest & TenantRequest, res: Response): Promise<void> => {
+        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+        await executeTenantDelete(res, tableName, String(req.params.id), targetTenantId, notFoundMsg);
+    };
 }

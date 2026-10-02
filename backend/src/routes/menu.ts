@@ -4,9 +4,9 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
 import {
     extractTargetTenantId,
-    fetchTenantRecords,
-    executeTenantUpdate,
-    executeTenantDelete
+    createTenantGetHandler,
+    createTenantPatchHandler,
+    createTenantDeleteHandler
 } from '../utils/dbHelpers';
 
 const router = Router();
@@ -14,10 +14,7 @@ const router = Router();
 // -----------------------------------------------------------------------------
 // CATEGORIES
 // -----------------------------------------------------------------------------
-router.get('/categories', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await fetchTenantRecords(res, 'categories', 'sort_order ASC', targetTenantId, 'is_active = true');
-});
+router.get('/categories', authenticateToken, createTenantGetHandler('categories', 'sort_order ASC', 'is_active = true'));
 
 router.post('/categories', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { name, type, sort_order } = req.body;
@@ -42,36 +39,14 @@ router.post('/categories', authenticateToken, async (req: AuthRequest & TenantRe
     }
 });
 
-router.patch('/categories/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantUpdate(
-        res,
-        'categories',
-        String(req.params.id),
-        req.body,
-        targetTenantId,
-        'Categoría no encontrada o no pertenece a tu restaurante'
-    );
-});
+router.patch('/categories/:id', authenticateToken, createTenantPatchHandler('categories', 'Categoría no encontrada o no pertenece a tu restaurante'));
 
-router.delete('/categories/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantDelete(
-        res,
-        'categories',
-        String(req.params.id),
-        targetTenantId,
-        'Categoría no encontrada o no pertenece a tu restaurante'
-    );
-});
+router.delete('/categories/:id', authenticateToken, createTenantDeleteHandler('categories', 'Categoría no encontrada o no pertenece a tu restaurante'));
 
 // -----------------------------------------------------------------------------
 // PRODUCTS
 // -----------------------------------------------------------------------------
-router.get('/products', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await fetchTenantRecords(res, 'products', 'name ASC', targetTenantId);
-});
+router.get('/products', authenticateToken, createTenantGetHandler('products', 'name ASC'));
 
 router.post('/products', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const p = req.body;
@@ -106,27 +81,8 @@ router.post('/products', authenticateToken, async (req: AuthRequest & TenantRequ
     }
 });
 
-router.patch('/products/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantUpdate(
-        res,
-        'products',
-        String(req.params.id),
-        req.body,
-        targetTenantId,
-        'Producto no encontrado o no pertenece a tu restaurante'
-    );
-});
+router.patch('/products/:id', authenticateToken, createTenantPatchHandler('products', 'Producto no encontrado o no pertenece a tu restaurante'));
 
-router.delete('/products/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantDelete(
-        res,
-        'products',
-        String(req.params.id),
-        targetTenantId,
-        'Producto no encontrado o no pertenece a tu restaurante'
-    );
-});
+router.delete('/products/:id', authenticateToken, createTenantDeleteHandler('products', 'Producto no encontrado o no pertenece a tu restaurante'));
 
 export default router;

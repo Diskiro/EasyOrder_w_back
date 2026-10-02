@@ -4,18 +4,15 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
 import {
     extractTargetTenantId,
-    fetchTenantRecords,
-    executeTenantUpdate,
-    executeTenantDelete
+    createTenantGetHandler,
+    createTenantPatchHandler,
+    createTenantDeleteHandler
 } from '../utils/dbHelpers';
 
 const router = Router();
 
 // Retrieve all tables for current restaurant
-router.get('/', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await fetchTenantRecords(res, 'tables', 'number ASC', targetTenantId);
-});
+router.get('/', authenticateToken, createTenantGetHandler('tables', 'number ASC'));
 
 // Create table with tenant assignment & quota check
 router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
@@ -53,28 +50,9 @@ router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res
 });
 
 // Update table with tenant check
-router.patch('/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantUpdate(
-        res,
-        'tables',
-        String(req.params.id),
-        req.body,
-        targetTenantId,
-        'Mesa no encontrada o no pertenece a tu restaurante'
-    );
-});
+router.patch('/:id', authenticateToken, createTenantPatchHandler('tables', 'Mesa no encontrada o no pertenece a tu restaurante'));
 
 // Delete table with tenant check
-router.delete('/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
-    const targetTenantId = extractTargetTenantId(req.user, req.tenant);
-    await executeTenantDelete(
-        res,
-        'tables',
-        String(req.params.id),
-        targetTenantId,
-        'Mesa no encontrada o no pertenece a tu restaurante'
-    );
-});
+router.delete('/:id', authenticateToken, createTenantDeleteHandler('tables', 'Mesa no encontrada o no pertenece a tu restaurante'));
 
 export default router;
