@@ -1,34 +1,46 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import { pool } from '../config/db';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { TenantRequest } from '../middleware/tenant';
+import {
+    extractTargetTenantId,
+    createTenantPatchHandler,
+    createTenantDeleteHandler
+} from '../utils/dbHelpers';
 
 const router = Router();
 
-// 1. Get Reservations (with optional filters)
-router.get('/', authenticateToken, async (req, res) => {
+// 1. Get Reservations (filtered by tenant with optional shift and date range filters)
+router.get('/', authenticateToken, async (req: AuthRequest & TenantRequest, res: Response) => {
     try {
+        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+        if (!targetTenantId && req.user.role !== 'superadmin') {
+            return res.status(400).json({ error: 'Se requiere un restaurante válido para consultar reservaciones.' });
+        }
+
         const { shift, startDate, endDate } = req.query;
 
         let queryStr = 'SELECT * FROM reservations WHERE 1=1';
         const queryParams: any[] = [];
-        let paramCount = 1;
 
-        if (shift) {
-            queryStr += ` AND shift = $${paramCount}`;
+        if (targetTenantId) {
+            queryParams.push(targetTenantId);
+            queryStr += ` AND restaurant_id = $${queryParams.length}`;
+        }
+
+        if (shift && typeof shift === 'string') {
             queryParams.push(shift);
-            paramCount++;
+            queryStr += ` AND shift = $${queryParams.length}`;
         }
 
-        if (startDate) {
-            queryStr += ` AND reservation_time >= $${paramCount}`;
+        if (startDate && typeof startDate === 'string') {
             queryParams.push(startDate);
-            paramCount++;
+            queryStr += ` AND reservation_time >= $${queryParams.length}`;
         }
 
-        if (endDate) {
-            queryStr += ` AND reservation_time <= $${paramCount}`;
+        if (endDate && typeof endDate === 'string') {
             queryParams.push(endDate);
-            paramCount++;
+            queryStr += ` AND reservation_time <= $${queryParams.length}`;
         }
 
         queryStr += ' ORDER BY reservation_time ASC';
@@ -41,15 +53,42 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. Create Reservation
-router.post('/', authenticateToken, async (req, res) => {
+// 2. Create Reservation (with tenant assignment & input validation)
+router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res: Response) => {
     try {
         const { table_id, customer_name, pax, reservation_time, shift, status, notes } = req.body;
 
+        if (!customer_name || typeof customer_name !== 'string' || !customer_name.trim()) {
+            return res.status(400).json({ error: 'El nombre del cliente es obligatorio.' });
+        }
+
+        const parsedPax = Number(pax);
+        if (!pax || isNaN(parsedPax) || parsedPax <= 0) {
+            return res.status(400).json({ error: 'El número de comensales (pax) debe ser mayor a 0.' });
+        }
+
+        if (!reservation_time || isNaN(Date.parse(reservation_time))) {
+            return res.status(400).json({ error: 'La fecha y hora de la reservación son obligatorias y deben ser válidas.' });
+        }
+
+        const targetTenantId = extractTargetTenantId(req.user, req.tenant);
+        if (!targetTenantId && req.user.role !== 'superadmin') {
+            return res.status(400).json({ error: 'Se requiere un restaurante válido para crear la reservación.' });
+        }
+
         const { rows } = await pool.query(
-            `INSERT INTO reservations (table_id, customer_name, pax, reservation_time, shift, status, notes) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [table_id, customer_name, pax, reservation_time, shift, status || 'pending', notes]
+            `INSERT INTO reservations (table_id, customer_name, pax, reservation_time, shift, status, notes, restaurant_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [
+                table_id || null,
+                customer_name.trim(),
+                parsedPax,
+                reservation_time,
+                shift || 'lunch',
+                status || 'pending',
+                notes || null,
+                targetTenantId
+            ]
         );
 
         res.status(201).json(rows[0]);
@@ -59,34 +98,10 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. Update Reservation
-router.patch('/:id', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
+// 3. Update Reservation (tenant-isolated via dbHelper)
+router.patch('/:id', authenticateToken, createTenantPatchHandler('reservations', 'Reservación no encontrada o no pertenece a tu restaurante'));
 
-        // Construct dynamic update query
-        const keys = Object.keys(updates);
-        if (keys.length === 0) return res.status(400).json({ error: 'No fields to update' });
-
-        const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-        const values = Object.values(updates);
-        
-        values.push(id); // push id as the last parameter
-
-        const queryStr = `UPDATE reservations SET ${setClause} WHERE id = $${values.length} RETURNING *`;
-
-        const { rows } = await pool.query(queryStr, values);
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Reservación no encontrada.' });
-        }
-
-        res.json(rows[0]);
-    } catch (error: any) {
-        console.error('Error updating reservation:', error);
-        res.status(500).json({ error: 'Error del servidor al actualizar reservación.' });
-    }
-});
+// 4. Delete Reservation (tenant-isolated via dbHelper)
+router.delete('/:id', authenticateToken, createTenantDeleteHandler('reservations', 'Reservación no encontrada o no pertenece a tu restaurante'));
 
 export default router;
