@@ -89,16 +89,70 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
     }
 });
 
-// Verify Admin
-router.post('/verify-admin', authenticateToken, async (req: AuthRequest, res) => {
-    try {
-        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+// Verify Admin (Permite verificar credenciales de administrador desde SignUpFlow o validar sesión existente)
+router.post('/verify-admin', async (req: TenantRequest, res) => {
+    const { email, password } = req.body || {};
+
+    // 1. Si se envían credenciales explícitas (ej. flujo de SignUp desde la pantalla de login)
+    if (email !== undefined || password !== undefined) {
+        if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Credenciales inválidas: email y contraseña requeridos' });
+        }
+
+        try {
+            const { rows } = await pool.query('SELECT * FROM profiles WHERE email = $1', [email.trim().toLowerCase()]);
+            const user = rows[0];
+
+            if (!user || !user.password_hash) {
+                return res.status(401).json({ error: 'Credenciales de administrador inválidas' });
+            }
+
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            if (!isMatch) {
+                return res.status(401).json({ error: 'Credenciales de administrador inválidas' });
+            }
+
+            if (user.role !== 'admin' && user.role !== 'superadmin') {
+                return res.status(403).json({ error: 'Solo administradores pueden autorizar el registro de nuevo personal.' });
+            }
+
+            // Aislamiento Multi-Tenant: El admin debe pertenecer al restaurante del contexto o ser superadmin
+            if (!canUserAccessTenant(user.restaurant_id, user.role, req.tenant?.id)) {
+                return res.status(403).json({
+                    error: 'tenant_forbidden',
+                    message: `No tienes permisos de administrador en el restaurante "${req.tenant?.name || 'solicitado'}".`
+                });
+            }
+
+            // Generar token temporal de administrador para autorizar la creación del usuario
+            const token = jwt.sign(
+                { id: user.id, email: user.email, role: user.role, restaurant_id: user.restaurant_id },
+                process.env.JWT_SECRET || 'super_secret_jwt_key_for_easyorder',
+                { expiresIn: '15m' }
+            );
+
+            return res.json({ status: 'ok', token, user: { id: user.id, email: user.email, role: user.role, restaurant_id: user.restaurant_id } });
+        } catch (error: any) {
+            return res.status(500).json({ error: 'Error del servidor al verificar credenciales' });
+        }
+    }
+
+    // 2. Si se verifica vía Token JWT previo
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ error: 'Credenciales o token de autenticación requeridos.' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_for_easyorder', (err: any, user: any) => {
+        if (err || !user) {
+            return res.status(403).json({ error: 'Token inválido o expirado' });
+        }
+        if (user.role !== 'admin' && user.role !== 'superadmin') {
             return res.status(403).json({ error: 'Solo administradores.' });
         }
-        res.json({ status: 'ok' });
-    } catch (error: any) {
-        res.status(500).json({ error: 'Error del servidor' });
-    }
+        return res.json({ status: 'ok', user });
+    });
 });
 
 // Admin Crear Usuario / Staff con Aislamiento y Control de Cuota

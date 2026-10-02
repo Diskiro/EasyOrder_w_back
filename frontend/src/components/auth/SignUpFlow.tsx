@@ -13,6 +13,7 @@ export function SignUpFlow({ onBack }: SignUpFlowProps) {
 
     // SignUp Steps: 'admin-auth' | 'create-user'
     const [signupStep, setSignupStep] = useState<'admin-auth' | 'create-user'>('admin-auth')
+    const [signupRole, setSignupRole] = useState<'waiter' | 'kitchen' | 'admin'>('waiter')
 
     // Admin Auth Validation
     const adminForm = useFormValidation(
@@ -49,7 +50,8 @@ export function SignUpFlow({ onBack }: SignUpFlowProps) {
             const success = await handleSecureSignUp(
                 userForm.values.signupEmail,
                 userForm.values.signupPassword,
-                userForm.values.fullName
+                userForm.values.fullName,
+                signupRole
             )
             if (success) {
                 onBack()
@@ -152,6 +154,21 @@ export function SignUpFlow({ onBack }: SignUpFlowProps) {
                         helperText={userForm.errors.signupPassword}
                         required
                     />
+
+                    <TextField
+                        select
+                        name="signupRole"
+                        label="Staff Role"
+                        fullWidth
+                        margin="normal"
+                        value={signupRole}
+                        onChange={(e) => setSignupRole(e.target.value as any)}
+                        SelectProps={{ native: true }}
+                    >
+                        <option value="waiter" style={{ background: '#1F2329', color: 'white' }}>Mesero / Waiter</option>
+                        <option value="kitchen" style={{ background: '#1F2329', color: 'white' }}>Cocina / Kitchen</option>
+                        <option value="admin" style={{ background: '#1F2329', color: 'white' }}>Administrador / Admin</option>
+                    </TextField>
 
                     <Button
                         type="submit"

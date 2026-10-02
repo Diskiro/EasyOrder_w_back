@@ -53,10 +53,13 @@ export function useAuthActions() {
         setError(null);
         try {
             // Send to a specialized verify-admin endpoint
-            await apiFetch('/auth/verify-admin', {
+            const data = await apiFetch('/auth/verify-admin', {
                 method: 'POST',
                 body: JSON.stringify({ email: adminEmail, password: adminPassword }),
             });
+            if (data?.token) {
+                localStorage.setItem('token', data.token);
+            }
             return true;
         } catch (err: any) {
             setError(err.message);

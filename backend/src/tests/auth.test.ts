@@ -1,5 +1,7 @@
 import request from 'supertest';
 import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 
 let mockTenant: any = null;
@@ -259,17 +261,112 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
     });
 
     describe('POST /api/auth/verify-admin', () => {
-        it('debe responder status ok para administradores', async () => {
-            mockUser = { id: 'admin-1', role: 'admin' };
-            const res = await request(app).post('/api/auth/verify-admin');
-            expect(res.status).toBe(200);
-            expect(res.body.status).toBe('ok');
+        it('debe responder 400 si se envían credenciales con formato inválido', async () => {
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 123, password: null });
+            expect(res.status).toBe(400);
         });
 
-        it('debe responder 403 para usuarios no administradores', async () => {
-            mockUser = { id: 'waiter-1', role: 'waiter' };
-            const res = await request(app).post('/api/auth/verify-admin');
+        it('debe verificar admin exitosamente con credenciales y generar token temporal', async () => {
+            const adminUser = {
+                id: 'admin-uuid',
+                email: 'admin@demo.com',
+                password_hash: '$2b$10$hashed',
+                role: 'admin',
+                restaurant_id: 'tenant-1'
+            };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [adminUser] });
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+            mockTenant = { id: 'tenant-1', name: 'Demo' };
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 'admin@demo.com', password: 'password123' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+            expect(res.body.token).toBeDefined();
+            expect(res.body.user.role).toBe('admin');
+        });
+
+        it('debe responder 401 si el password de admin es incorrecto', async () => {
+            const adminUser = {
+                id: 'admin-uuid',
+                email: 'admin@demo.com',
+                password_hash: '$2b$10$hashed',
+                role: 'admin',
+                restaurant_id: 'tenant-1'
+            };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [adminUser] });
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 'admin@demo.com', password: 'wrong' });
+
+            expect(res.status).toBe(401);
+            expect(res.body.error).toContain('inválidas');
+        });
+
+        it('debe responder 403 si el usuario existe pero no tiene rol de admin ni superadmin', async () => {
+            const waiterUser = {
+                id: 'waiter-uuid',
+                email: 'waiter@demo.com',
+                password_hash: '$2b$10$hashed',
+                role: 'waiter',
+                restaurant_id: 'tenant-1'
+            };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [waiterUser] });
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 'waiter@demo.com', password: 'password123' });
+
             expect(res.status).toBe(403);
+            expect(res.body.error).toContain('Solo administradores');
+        });
+
+        it('debe responder 403 si el admin no pertenece al tenant solicitado', async () => {
+            const otherAdminUser = {
+                id: 'admin-2',
+                email: 'admin2@other.com',
+                password_hash: '$2b$10$hashed',
+                role: 'admin',
+                restaurant_id: 'tenant-2'
+            };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [otherAdminUser] });
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+            mockTenant = { id: 'tenant-1', name: 'Demo 1' };
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 'admin2@other.com', password: 'password123' });
+
+            expect(res.status).toBe(403);
+            expect(res.body.error).toBe('tenant_forbidden');
+        });
+
+        it('debe responder 401 si no se envían credenciales ni token de autorización', async () => {
+            const res = await request(app).post('/api/auth/verify-admin');
+            expect(res.status).toBe(401);
+        });
+
+        it('debe responder status ok si se provee un token JWT de admin válido', async () => {
+            const validToken = 'valid-jwt-token';
+            jest.spyOn(jwt, 'verify').mockImplementationOnce(((_t: any, _s: any, cb: any) => {
+                cb(null, { id: 'admin-1', role: 'admin' });
+            }) as any);
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .set('Authorization', `Bearer ${validToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
         });
     });
 
