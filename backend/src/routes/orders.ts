@@ -1,14 +1,25 @@
 import { Router } from 'express';
 import { pool } from '../config/db';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { TenantRequest } from '../middleware/tenant';
 
 const router = Router();
 
-// Active Orders
-router.get('/active', authenticateToken, async (req, res) => {
+// Active Orders (Filtradas por Restaurante)
+router.get('/active', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     try {
-        // We need to fetch orders, resolving tables, order_items, and products 
-        // This replicates the Supabase relation mapping
+        const targetRestaurantId = req.user.role === 'superadmin' && !req.tenant?.id
+            ? null
+            : (req.user.restaurant_id || req.tenant?.id);
+
+        let whereClause = "WHERE o.status != 'completed' AND o.status != 'cancelled'";
+        const params: any[] = [];
+
+        if (targetRestaurantId) {
+            whereClause += ' AND o.restaurant_id = $1';
+            params.push(targetRestaurantId);
+        }
+
         const ordersQuery = `
       SELECT o.*,
              row_to_json(t) as table,
@@ -31,10 +42,10 @@ router.get('/active', authenticateToken, async (req, res) => {
              ) as order_items
       FROM orders o
       JOIN tables t ON t.id = o.table_id
-      WHERE o.status != 'completed' AND o.status != 'cancelled'
+      ${whereClause}
       ORDER BY o.created_at ASC;
     `;
-        const { rows } = await pool.query(ordersQuery);
+        const { rows } = await pool.query(ordersQuery, params);
 
         // Convert null array aggregations to empty arrays
         const orders = rows.map(r => ({ ...r, order_items: r.order_items || [] }));
@@ -47,17 +58,18 @@ router.get('/active', authenticateToken, async (req, res) => {
 });
 
 // Create Order (uses a Postgres transaction)
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { tableId, serverId, items } = req.body;
     const client = await pool.connect();
     try {
+        const targetRestaurantId = req.user.restaurant_id || req.tenant?.id;
         await client.query('BEGIN');
         const total = items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
 
         const { rows: orderRows } = await client.query(
-            `INSERT INTO orders (table_id, server_id, status, total_amount) 
-       VALUES ($1, $2, 'pending', $3) RETURNING *`,
-            [tableId, serverId, total]
+            `INSERT INTO orders (table_id, server_id, status, total_amount, restaurant_id) 
+             VALUES ($1, $2, 'pending', $3, $4) RETURNING *`,
+            [tableId, serverId, total, targetRestaurantId]
         );
         const order = orderRows[0];
 
