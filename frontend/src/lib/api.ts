@@ -33,7 +33,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'X-Restaurant-Slug': tenantSlug,
+        ...(tenantSlug ? { 'X-Restaurant-Slug': tenantSlug } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers as Record<string, string>),
     };

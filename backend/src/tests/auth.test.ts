@@ -350,6 +350,28 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
             expect(res.body.error).toBe('tenant_forbidden');
         });
 
+        it('debe responder 400 si el admin intenta verificar sin tenant en el contexto (dominio raíz)', async () => {
+            const adminUser = {
+                id: 'admin-uuid',
+                email: 'admin@demo.com',
+                password_hash: '$2b$10$hashed',
+                role: 'admin',
+                restaurant_id: 'tenant-1'
+            };
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [adminUser] });
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+
+            mockTenant = null; // Dominio raíz sin tenant
+
+            const res = await request(app)
+                .post('/api/auth/verify-admin')
+                .send({ email: 'admin@demo.com', password: 'password123' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toBe('tenant_required');
+            expect(res.body.message).toContain('subdominio de tu restaurante');
+        });
+
         it('debe responder 401 si no se envían credenciales ni token de autorización', async () => {
             const res = await request(app).post('/api/auth/verify-admin');
             expect(res.status).toBe(401);

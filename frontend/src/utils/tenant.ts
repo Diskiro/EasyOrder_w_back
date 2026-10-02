@@ -44,9 +44,9 @@ export function extractSubdomainFromHostname(hostname: string | undefined): stri
 /**
  * Determina el slug del inquilino activo según el entorno y la ubicación del navegador
  */
-export function resolveActiveTenantSlug(): string {
+export function resolveActiveTenantSlug(): string | null {
     if (typeof window === 'undefined') {
-        return DEFAULT_TENANT_SLUG;
+        return null;
     }
 
     // 1. Prioridad: Parámetro en URL '?tenant=mi-slug' (útil en pruebas y desarrollo)
@@ -62,13 +62,19 @@ export function resolveActiveTenantSlug(): string {
         // En caso de que URLSearchParams falle en entornos no estándar
     }
 
-    // 2. Prioridad: Subdominio del hostname actual
+    // 2. Prioridad: Subdominio del hostname actual (ej: demo.useeasyorder.com)
     const subdomain = extractSubdomainFromHostname(window.location.hostname);
     if (subdomain) {
         return subdomain;
     }
 
-    // 3. Prioridad: Slug persistido en LocalStorage
+    // 3. Si estamos en el dominio raíz de producción (useeasyorder.com), no hay tenant por defecto
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname === 'useeasyorder.com' || hostname === 'www.useeasyorder.com') {
+        return null;
+    }
+
+    // 4. Prioridad: Slug persistido en LocalStorage
     try {
         const storedSlug = localStorage.getItem('tenant_slug');
         const sanitizedStored = sanitizeTenantSlug(storedSlug);
@@ -79,8 +85,12 @@ export function resolveActiveTenantSlug(): string {
         // Ignorar errores de acceso a localStorage en modos privados
     }
 
-    // 4. Fallback por defecto: 'demo'
-    return DEFAULT_TENANT_SLUG;
+    // 5. Fallback exclusivo para desarrollo local (localhost / 127.0.0.1)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return DEFAULT_TENANT_SLUG;
+    }
+
+    return null;
 }
 
 /**

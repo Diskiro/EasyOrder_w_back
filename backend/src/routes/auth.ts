@@ -117,11 +117,20 @@ router.post('/verify-admin', async (req: TenantRequest, res) => {
             }
 
             // Aislamiento Multi-Tenant: El admin debe pertenecer al restaurante del contexto o ser superadmin
-            if (!canUserAccessTenant(user.restaurant_id, user.role, req.tenant?.id)) {
-                return res.status(403).json({
-                    error: 'tenant_forbidden',
-                    message: `No tienes permisos de administrador en el restaurante "${req.tenant?.name || 'solicitado'}".`
-                });
+            if (user.role !== 'superadmin') {
+                if (!req.tenant?.id) {
+                    return res.status(400).json({
+                        error: 'tenant_required',
+                        message: 'El registro de personal debe realizarse desde el subdominio de tu restaurante (ej. demo.useeasyorder.com).'
+                    });
+                }
+
+                if (!canUserAccessTenant(user.restaurant_id, user.role, req.tenant.id)) {
+                    return res.status(403).json({
+                        error: 'tenant_forbidden',
+                        message: `No tienes permisos de administrador en el restaurante "${req.tenant.name}".`
+                    });
+                }
             }
 
             // Generar token temporal de administrador para autorizar la creación del usuario

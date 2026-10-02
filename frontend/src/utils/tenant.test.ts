@@ -83,11 +83,24 @@ describe('tenant utility module (SRP & Input Validation)', () => {
     });
 
     describe('resolveActiveTenantSlug', () => {
-        it('debe retornar "demo" como valor por defecto si no hay parámetros ni subdominio', () => {
+        it('debe retornar "demo" en localhost si no hay parámetros ni subdominio', () => {
             expect(resolveActiveTenantSlug()).toBe('demo');
         });
 
-        it('debe dar prioridad al slug guardado en localStorage', () => {
+        it('debe retornar null en el dominio raíz de producción useeasyorder.com', () => {
+            const originalLocation = window.location;
+            // @ts-ignore
+            delete window.location;
+            // @ts-ignore
+            window.location = { ...originalLocation, hostname: 'useeasyorder.com', search: '' };
+
+            expect(resolveActiveTenantSlug()).toBeNull();
+
+            // @ts-ignore
+            window.location = originalLocation;
+        });
+
+        it('debe dar prioridad al slug guardado en localStorage para desarrollo', () => {
             localStorage.setItem('tenant_slug', 'sushi-master');
             expect(resolveActiveTenantSlug()).toBe('sushi-master');
         });

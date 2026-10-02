@@ -111,11 +111,25 @@ describe('Multi-Tenant & Subscription Architecture (SRP & Security)', () => {
             return res as Response;
         };
 
-        it('debe resolver el inquilino demo cuando no se envía subdominio ni header', async () => {
+        it('debe pasar next() con tenant undefined cuando no se envía subdominio ni header (dominio raíz)', async () => {
             const req = {
-                hostname: 'localhost',
+                hostname: 'useeasyorder.com',
                 headers: {}
-            } as TenantRequest;
+            } as unknown as TenantRequest;
+            const res = createMockRes();
+            const next: NextFunction = jest.fn();
+
+            await resolveTenant(req, res, next);
+            expect(pool.query).not.toHaveBeenCalled();
+            expect(req.tenant).toBeUndefined();
+            expect(next).toHaveBeenCalledTimes(1);
+        });
+
+        it('debe resolver el inquilino cuando se provee el header o subdominio válido', async () => {
+            const req = {
+                hostname: 'demo.useeasyorder.com',
+                headers: { 'x-restaurant-slug': 'demo' }
+            } as unknown as TenantRequest;
             const res = createMockRes();
             const next: NextFunction = jest.fn();
 
@@ -149,7 +163,7 @@ describe('Multi-Tenant & Subscription Architecture (SRP & Security)', () => {
             const req = {
                 hostname: 'noexiste.useeasyorder.com',
                 headers: {}
-            } as TenantRequest;
+            } as unknown as TenantRequest;
             const res = createMockRes();
             const next: NextFunction = jest.fn();
 
@@ -161,26 +175,11 @@ describe('Multi-Tenant & Subscription Architecture (SRP & Security)', () => {
             expect(next).not.toHaveBeenCalled();
         });
 
-        it('debe pasar next() si el fallback demo no existe y no había slug', async () => {
+        it('debe manejar errores de base de datos al buscar slug respondiendo 500', async () => {
             const req = {
-                hostname: 'localhost',
+                hostname: 'demo.useeasyorder.com',
                 headers: {}
-            } as TenantRequest;
-            const res = createMockRes();
-            const next: NextFunction = jest.fn();
-
-            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
-
-            await resolveTenant(req, res, next);
-            expect(next).toHaveBeenCalledTimes(1);
-            expect(req.tenant).toBeUndefined();
-        });
-
-        it('debe manejar errores de base de datos respondiendo 500', async () => {
-            const req = {
-                hostname: 'localhost',
-                headers: {}
-            } as TenantRequest;
+            } as unknown as TenantRequest;
             const res = createMockRes();
             const next: NextFunction = jest.fn();
 

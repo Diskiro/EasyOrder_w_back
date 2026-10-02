@@ -94,7 +94,11 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
             req.headers['x-restaurant-slug'] as string | undefined
         );
 
-        const targetSlug = slug || 'demo';
+        // Si no se especificó ningún slug (ej. acceso directo al dominio raíz o plataforma global)
+        if (!slug) {
+            req.tenant = undefined;
+            return next();
+        }
 
         const { rows } = await pool.query(
             `SELECT r.*, 
@@ -103,13 +107,10 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
              FROM restaurants r
              LEFT JOIN subscription_plans p ON r.plan_id = p.id
              WHERE r.slug = $1 LIMIT 1`,
-            [targetSlug]
+            [slug]
         );
 
         if (rows.length === 0) {
-            if (!slug) {
-                return next();
-            }
             res.status(404).json({
                 error: 'restaurant_not_found',
                 message: `El restaurante con identificador "${slug}" no está registrado en EasyOrder.`

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch } from '../lib/api';
+import { resolveActiveTenantSlug } from '../utils/tenant';
 
 export interface PlanFeatures {
     has_kitchen_display: boolean;
@@ -51,6 +52,14 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [subscriptionError, setSubscriptionError] = useState<{ error: string; message: string } | null>(null);
 
     const refreshTenant = useCallback(async () => {
+        const activeSlug = resolveActiveTenantSlug();
+        if (!activeSlug) {
+            setTenant(null);
+            setSubscriptionError(null);
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             const data: TenantData = await apiFetch('/restaurants/current');
@@ -76,6 +85,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     error: err.code || 'subscription_blocked',
                     message: err.message || 'Suscripción inactiva o suspendida.'
                 });
+            } else {
+                setTenant(null);
+                setSubscriptionError(null);
             }
         } finally {
             setIsLoading(false);
