@@ -4,6 +4,11 @@ import { Server, Socket } from 'socket.io';
  * SRP: Funciones de utilidad para gestión de salas y emisión segmentada por inquilino en Socket.IO
  */
 
+export interface SocketEmitter {
+    emit: (event: string, ...args: any[]) => any;
+    to?: (room: string) => { emit: (event: string, ...args: any[]) => any };
+}
+
 /**
  * Retorna el identificador de sala para un restaurante/inquilino
  */
@@ -27,7 +32,7 @@ export function isValidTenantRoomId(id: unknown): id is string {
  * Emite un evento db_change exclusivamente a la sala del inquilino correspondiente
  */
 export function emitTenantDbChange(
-    io: Server | any,
+    io: SocketEmitter | Server | undefined | null,
     tenantId: string | null | undefined,
     table: string,
     extraData?: Record<string, any>
@@ -66,7 +71,7 @@ export function setupSocketHandlers(io: Server): void {
 
             if (isValidTenantRoomId(restaurantId)) {
                 const room = getTenantRoom(restaurantId);
-                socket.join(room);
+                void socket.join(room);
                 socket.emit('joined_restaurant', { room, status: 'ok' });
             } else {
                 socket.emit('error', { message: 'Identificador de restaurante inválido para unirse a la sala.' });
@@ -79,7 +84,7 @@ export function setupSocketHandlers(io: Server): void {
 
             if (isValidTenantRoomId(restaurantId)) {
                 const room = getTenantRoom(restaurantId);
-                socket.leave(room);
+                void socket.leave(room);
                 socket.emit('left_restaurant', { room, status: 'ok' });
             }
         });

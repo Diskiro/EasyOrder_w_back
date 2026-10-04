@@ -18,26 +18,26 @@ export function handleTableCacheInvalidation(
 ): void {
     switch (table) {
         case 'orders':
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
-            queryClient.invalidateQueries({ queryKey: ['tables'] });
-            queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+            void queryClient.invalidateQueries({ queryKey: ['orders'] });
+            void queryClient.invalidateQueries({ queryKey: ['tables'] });
+            void queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
             break;
         case 'order_items':
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
-            queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+            void queryClient.invalidateQueries({ queryKey: ['orders'] });
+            void queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
             break;
         case 'tables':
-            queryClient.invalidateQueries({ queryKey: ['tables'] });
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            void queryClient.invalidateQueries({ queryKey: ['tables'] });
+            void queryClient.invalidateQueries({ queryKey: ['orders'] });
             break;
         case 'categories':
-            queryClient.invalidateQueries({ queryKey: ['categories'] });
+            void queryClient.invalidateQueries({ queryKey: ['categories'] });
             break;
         case 'products':
-            queryClient.invalidateQueries({ queryKey: ['products'] });
+            void queryClient.invalidateQueries({ queryKey: ['products'] });
             break;
         case 'reservations':
-            queryClient.invalidateQueries({ queryKey: ['reservations'] });
+            void queryClient.invalidateQueries({ queryKey: ['reservations'] });
             break;
         default:
             break;
@@ -71,7 +71,7 @@ export function useGlobalRealtimeSync(tenantIdOverride?: string) {
         socket.on('connect', handleConnect);
 
         const handleDbChange = (payload: DbChangePayload) => {
-            if (!payload || !payload.table) return;
+            if (!payload?.table) return;
 
             // Filtrado defensivo: si el payload trae restaurant_id y no coincide con el restaurante activo, se descarta
             if (payload.restaurant_id && effectiveTenantId && payload.restaurant_id !== effectiveTenantId) {
