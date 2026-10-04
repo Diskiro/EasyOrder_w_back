@@ -171,6 +171,8 @@ export function createTenantGetHandler(tableName: string, orderBy: string, baseW
     };
 }
 
+import { emitTenantDbChange } from './socketHelpers';
+
 /**
  * Handler Factory SRP: Crea un controlador Express reutilizable para actualizar registros multi-tenant
  */
@@ -178,6 +180,9 @@ export function createTenantPatchHandler(tableName: string, notFoundMsg: string)
     return async (req: AuthRequest & TenantRequest, res: Response): Promise<void> => {
         const targetTenantId = extractTargetTenantId(req.user, req.tenant);
         await executeTenantUpdate(res, tableName, String(req.params.id), req.body, targetTenantId, notFoundMsg);
+        if (!res.headersSent || res.statusCode < 400) {
+            emitTenantDbChange(req.app?.get('io'), targetTenantId, tableName);
+        }
     };
 }
 
@@ -188,5 +193,8 @@ export function createTenantDeleteHandler(tableName: string, notFoundMsg: string
     return async (req: AuthRequest & TenantRequest, res: Response): Promise<void> => {
         const targetTenantId = extractTargetTenantId(req.user, req.tenant);
         await executeTenantDelete(res, tableName, String(req.params.id), targetTenantId, notFoundMsg);
+        if (!res.headersSent || res.statusCode < 400) {
+            emitTenantDbChange(req.app?.get('io'), targetTenantId, tableName);
+        }
     };
 }

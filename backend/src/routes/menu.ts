@@ -8,6 +8,7 @@ import {
     createTenantPatchHandler,
     createTenantDeleteHandler
 } from '../utils/dbHelpers';
+import { emitTenantDbChange } from '../utils/socketHelpers';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.post('/categories', authenticateToken, async (req: AuthRequest & TenantRe
             'INSERT INTO categories (name, type, sort_order, restaurant_id) VALUES ($1, $2, $3, $4) RETURNING *',
             [name.trim(), type || 'food', Number(sort_order) || 0, targetTenantId]
         );
+        emitTenantDbChange(req.app.get('io'), targetTenantId, 'categories');
         res.status(201).json(rows[0]);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -75,6 +77,7 @@ router.post('/products', authenticateToken, async (req: AuthRequest & TenantRequ
                 targetTenantId
             ]
         );
+        emitTenantDbChange(req.app.get('io'), targetTenantId, 'products');
         res.status(201).json(rows[0]);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

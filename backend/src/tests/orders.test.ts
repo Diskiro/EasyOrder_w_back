@@ -26,7 +26,8 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 const mockIo = {
-    emit: jest.fn()
+    emit: jest.fn(),
+    to: jest.fn().mockReturnThis()
 };
 
 const app = express();
