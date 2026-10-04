@@ -75,13 +75,10 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// Socket.io Connection
-io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-});
+import { setupSocketHandlers } from './utils/socketHelpers';
+
+// Socket.io Connection & Tenant Rooms
+setupSocketHandlers(io);
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {

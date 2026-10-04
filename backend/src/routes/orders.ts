@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../config/db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
+import { emitTenantDbChange } from '../utils/socketHelpers';
 
 const router = Router();
 
@@ -87,9 +88,9 @@ router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res
         );
 
         await client.query('COMMIT');
-        req.app.get('io').emit('db_change', { table: 'orders' });
-        req.app.get('io').emit('db_change', { table: 'order_items' });
-        req.app.get('io').emit('db_change', { table: 'tables' });
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'orders');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'order_items');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'tables');
         res.json(order);
     } catch (error: any) {
         await client.query('ROLLBACK');
@@ -100,7 +101,7 @@ router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res
 });
 
 // Update Order Status
-router.patch('/:orderId/status', authenticateToken, async (req, res) => {
+router.patch('/:orderId/status', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
     const client = await pool.connect();
@@ -109,8 +110,9 @@ router.patch('/:orderId/status', authenticateToken, async (req, res) => {
         await client.query('BEGIN');
         await client.query('UPDATE orders SET status = $1 WHERE id = $2', [status, orderId]);
 
-        const { rows } = await client.query('SELECT table_id FROM orders WHERE id = $1', [orderId]);
+        const { rows } = await client.query('SELECT table_id, restaurant_id FROM orders WHERE id = $1', [orderId]);
         const tableId = rows[0]?.table_id;
+        const targetRestaurantId = rows[0]?.restaurant_id || req.user?.restaurant_id || req.tenant?.id;
 
         if (tableId) {
             if (status === 'completed') {
@@ -131,6 +133,8 @@ router.patch('/:orderId/status', authenticateToken, async (req, res) => {
         }
 
         await client.query('COMMIT');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'orders');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'tables');
         res.json({ status: 'ok' });
     } catch (error: any) {
         await client.query('ROLLBACK');
@@ -141,7 +145,7 @@ router.patch('/:orderId/status', authenticateToken, async (req, res) => {
 });
 
 // Update single item readyness
-router.patch('/:orderId/items/:itemId/ready', authenticateToken, async (req, res) => {
+router.patch('/:orderId/items/:itemId/ready', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { orderId, itemId } = req.params;
     const { isReady } = req.body;
     const client = await pool.connect();
@@ -151,6 +155,8 @@ router.patch('/:orderId/items/:itemId/ready', authenticateToken, async (req, res
         await client.query('UPDATE order_items SET is_ready = $1 WHERE id = $2', [isReady, itemId]);
 
         const { rows: allItems } = await client.query('SELECT is_ready FROM order_items WHERE order_id = $1', [orderId]);
+        const { rows: orderRows } = await client.query('SELECT restaurant_id FROM orders WHERE id = $1', [orderId]);
+        const targetRestaurantId = orderRows[0]?.restaurant_id || req.user?.restaurant_id || req.tenant?.id;
 
         if (allItems.length > 0) {
             const isAllReady = allItems.every((item) => item.is_ready);
@@ -162,6 +168,8 @@ router.patch('/:orderId/items/:itemId/ready', authenticateToken, async (req, res
         }
 
         await client.query('COMMIT');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'order_items');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'orders');
         res.json({ status: 'ok' });
     } catch (error: any) {
         await client.query('ROLLBACK');
@@ -172,7 +180,7 @@ router.patch('/:orderId/items/:itemId/ready', authenticateToken, async (req, res
 });
 
 // Update whole items list of an active order
-router.patch('/:orderId/items', authenticateToken, async (req, res) => {
+router.patch('/:orderId/items', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { orderId } = req.params;
     const { items } = req.body;
     const client = await pool.connect();
@@ -182,8 +190,9 @@ router.patch('/:orderId/items', authenticateToken, async (req, res) => {
         const total = items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
 
         const { rows: existingItems } = await client.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
-        const { rows: orderData } = await client.query('SELECT status FROM orders WHERE id = $1', [orderId]);
+        const { rows: orderData } = await client.query('SELECT status, restaurant_id FROM orders WHERE id = $1', [orderId]);
         const currentStatus = orderData[0]?.status;
+        const targetRestaurantId = orderData[0]?.restaurant_id || req.user?.restaurant_id || req.tenant?.id;
 
         let needsKitchenAttention = false;
         const existingMap = new Map(existingItems.map((item: any) => [item.product_id, item]));
@@ -195,7 +204,7 @@ router.patch('/:orderId/items', authenticateToken, async (req, res) => {
 
         if (idsToDelete.length > 0) {
             const placeholders = idsToDelete.map((_: any, i: number) => `$${i + 1}`).join(',');
-            await client.query(`DELETE FROM order_items WHERE id IN (${placeholders})`); // Note parameterization would normally be used here but using in clause with values
+            await client.query(`DELETE FROM order_items WHERE id IN (${placeholders})`, idsToDelete);
         }
 
         for (const item of items) {
@@ -228,8 +237,8 @@ router.patch('/:orderId/items', authenticateToken, async (req, res) => {
         await client.query('UPDATE orders SET total_amount = $1, status = $2 WHERE id = $3', [total, nextStatus, orderId]);
 
         await client.query('COMMIT');
-        req.app.get('io').emit('db_change', { table: 'order_items' });
-        req.app.get('io').emit('db_change', { table: 'orders' });
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'order_items');
+        emitTenantDbChange(req.app.get('io'), targetRestaurantId, 'orders');
         res.json({ status: 'ok' });
     } catch (error: any) {
         await client.query('ROLLBACK');

@@ -8,6 +8,7 @@ import {
     createTenantPatchHandler,
     createTenantDeleteHandler
 } from '../utils/dbHelpers';
+import { emitTenantDbChange } from '../utils/socketHelpers';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.post('/', authenticateToken, async (req: AuthRequest & TenantRequest, res
             'INSERT INTO tables (number, capacity, status, restaurant_id) VALUES ($1, $2, $3, $4) RETURNING *',
             [number.trim(), Number(capacity) || 4, 'available', targetTenantId]
         );
+        emitTenantDbChange(req.app.get('io'), targetTenantId, 'tables');
         res.status(201).json(rows[0]);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
