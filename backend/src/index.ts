@@ -76,9 +76,13 @@ app.get('/api/health', async (req, res) => {
 });
 
 import { setupSocketHandlers } from './utils/socketHelpers';
+import { ensureStaffSchema } from './utils/dbHelpers';
 
 // Socket.io Connection & Tenant Rooms
 setupSocketHandlers(io);
+
+// Auto-verificación de esquema en base de datos
+void ensureStaffSchema();
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {

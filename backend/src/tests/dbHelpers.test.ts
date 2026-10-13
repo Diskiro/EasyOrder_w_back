@@ -4,7 +4,8 @@ import {
     buildTenantDeleteQuery,
     fetchTenantRecords,
     executeTenantUpdate,
-    executeTenantDelete
+    executeTenantDelete,
+    ensureStaffSchema
 } from '../utils/dbHelpers';
 import { pool } from '../config/db';
 
@@ -134,6 +135,24 @@ describe('Database Helpers & Query Builders (SRP)', () => {
 
             await executeTenantDelete(mockRes, 'tables', '1', 'tenant-1', 'Mesa no encontrada');
             expect(mockRes.json).toHaveBeenCalledWith({ status: 'ok' });
+        });
+    });
+
+    describe('ensureStaffSchema', () => {
+        it('debe ejecutar ALTER TABLE y UPDATE sin errores', async () => {
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+            await expect(ensureStaffSchema()).resolves.toBeUndefined();
+            expect(pool.query).toHaveBeenCalledWith(
+                expect.stringContaining('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active')
+            );
+        });
+
+        it('debe capturar errores de base de datos sin propagar la excepción', async () => {
+            const spyError = jest.spyOn(console, 'error').mockImplementation(() => {});
+            (pool.query as jest.Mock).mockRejectedValueOnce(new Error('DB Connection Failed'));
+            await expect(ensureStaffSchema()).resolves.toBeUndefined();
+            expect(spyError).toHaveBeenCalled();
+            spyError.mockRestore();
         });
     });
 });

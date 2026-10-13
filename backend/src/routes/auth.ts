@@ -207,7 +207,7 @@ router.post('/register', authenticateToken, async (req: AuthRequest & TenantRequ
                 'SELECT COUNT(*) FROM profiles WHERE restaurant_id = $1 AND (is_active = true OR is_active IS NULL)',
                 [targetRestaurantId]
             );
-            const currentCount = parseInt(countRes.rows[0].count, 10);
+            const currentCount = Number.parseInt(countRes.rows[0].count, 10);
             if (isUserLimitReached(currentCount, req.tenant.plan.max_users)) {
                 return res.status(400).json({
                     error: 'user_limit_reached',
@@ -275,9 +275,24 @@ router.get('/staff', authenticateToken, async (req: AuthRequest & TenantRequest,
         }
         query += ' ORDER BY created_at DESC';
 
-        const { rows = [] } = await pool.query(query, params);
+        let rows: any[] = [];
+        try {
+            const result = await pool.query(query, params);
+            rows = result?.rows || [];
+        } catch (dbErr: any) {
+            // Si la columna is_active aún no existe en BD (Postgres 42703), auto-migrar y reintentar
+            if (dbErr.code === '42703' || dbErr.message?.includes('is_active')) {
+                await pool.query('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;');
+                const result = await pool.query(query, params);
+                rows = result?.rows || [];
+            } else {
+                throw dbErr;
+            }
+        }
+
         res.json(rows.map((r: any) => ({ ...r, is_active: r.is_active !== false })));
     } catch (error: any) {
+        console.error('Error al obtener lista de personal:', error);
         res.status(500).json({ error: 'Error del servidor' });
     }
 });
