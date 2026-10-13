@@ -11,11 +11,39 @@ interface TableGridProps {
     activeOrders?: Order[]
 }
 
-export default function TableGrid({ tables, onTableClick, assigningReservation, activeOrders }: TableGridProps) {
+function getTableCardStyle(isOccupied: boolean, isAssigning: boolean) {
+    if (isOccupied) {
+        return {
+            containerClass: "border-pink-500/50 bg-pink-500/10",
+            circleClass: "bg-pink-500 text-white",
+            labelClass: "text-pink-400",
+            label: "Ocupada"
+        }
+    }
+    if (isAssigning) {
+        return {
+            containerClass: "border-blue-500/50 bg-blue-500/10 cursor-alias animate-pulse",
+            circleClass: "bg-blue-500 text-white",
+            labelClass: "text-blue-400",
+            label: "Asignar"
+        }
+    }
+    return {
+        containerClass: "border-green-500/50 bg-green-500/10",
+        circleClass: "bg-green-500 text-white",
+        labelClass: "text-green-400",
+        label: "Disponible"
+    }
+}
+
+export default function TableGrid({ tables, onTableClick, assigningReservation, activeOrders }: Readonly<TableGridProps>) {
+    const isAssigning = Boolean(assigningReservation)
+
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 pb-20">
             {tables?.map(table => {
                 const isOccupied = table.status === 'occupied'
+                const style = getTableCardStyle(isOccupied, isAssigning)
                 const order = isOccupied
                     ? activeOrders?.find(o => o.table_id === table.id && o.status !== 'completed' && o.status !== 'cancelled')
                     : undefined
@@ -31,18 +59,16 @@ export default function TableGrid({ tables, onTableClick, assigningReservation, 
                     >
                         <div className={clsx(
                             "absolute inset-2 md:inset-4 rounded-xl flex flex-col items-center justify-center border-2 transition-all shadow-xl",
-                            isOccupied
-                                ? "border-pink-500/50 bg-pink-500/10"
-                                : assigningReservation ? "border-blue-500/50 bg-blue-500/10 cursor-alias animate-pulse" : "border-green-500/50 bg-green-500/10"
+                            style.containerClass
                         )}>
                             <div className={clsx(
                                 "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1 md:mb-1.5 shadow-lg",
-                                isOccupied ? "bg-pink-500 text-white" : assigningReservation ? "bg-blue-500 text-white" : "bg-green-500 text-white"
+                                style.circleClass
                             )}>
                                 <span className="text-lg md:text-xl font-bold">{table.number}</span>
                             </div>
-                            <span className={clsx("text-[10px] md:text-xs font-bold uppercase", isOccupied ? "text-pink-400" : assigningReservation ? "text-blue-400" : "text-green-400")}>
-                                {isOccupied ? 'Ocupada' : assigningReservation ? 'Asignar' : 'Disponible'}
+                            <span className={clsx("text-[10px] md:text-xs font-bold uppercase", style.labelClass)}>
+                                {style.label}
                             </span>
 
                             {/* Attending Server Badge */}

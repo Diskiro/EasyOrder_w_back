@@ -6,7 +6,6 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { TenantRequest } from '../middleware/tenant';
 import {
     validateRegisterInput,
-    validateRoleUpdate,
     validateStaffUpdate,
     isStaffActive,
     canUserAccessTenant,
@@ -376,8 +375,8 @@ router.delete('/staff/:id', authenticateToken, async (req: AuthRequest & TenantR
                 (SELECT COUNT(*) FROM cash_register_sessions WHERE user_id = $1) as session_count
         `, [id]);
 
-        const orderCount = parseInt(depRows[0]?.order_count || '0', 10);
-        const sessionCount = parseInt(depRows[0]?.session_count || '0', 10);
+        const orderCount = Number.parseInt(depRows[0]?.order_count || '0', 10);
+        const sessionCount = Number.parseInt(depRows[0]?.session_count || '0', 10);
 
         if (orderCount > 0 || sessionCount > 0) {
             // Desactivación segura (Soft Delete) para preservar la integridad de datos históricos
