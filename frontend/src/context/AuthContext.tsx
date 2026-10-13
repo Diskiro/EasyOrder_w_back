@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { queryClient } from '../lib/queryClient';
 import { apiFetch } from '../lib/api';
 
-type UserRole = 'admin' | 'waiter' | 'kitchen' | null;
+type UserRole = 'admin' | 'waiter' | 'kitchen' | 'superadmin' | null;
 
 export interface User {
     id: string;

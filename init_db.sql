@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     last_sign_in_at TIMESTAMPTZ,
     password_hash TEXT,
     is_logged_in INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

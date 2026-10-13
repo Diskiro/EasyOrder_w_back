@@ -23,6 +23,7 @@ router.get('/active', authenticateToken, async (req: AuthRequest & TenantRequest
 
         const ordersQuery = `
       SELECT o.*,
+             prof.full_name as server_name,
              row_to_json(t) as table,
              (
                 SELECT json_agg(
@@ -43,6 +44,7 @@ router.get('/active', authenticateToken, async (req: AuthRequest & TenantRequest
              ) as order_items
       FROM orders o
       JOIN tables t ON t.id = o.table_id
+      LEFT JOIN profiles prof ON prof.id = o.server_id
       ${whereClause}
       ORDER BY o.created_at ASC;
     `;

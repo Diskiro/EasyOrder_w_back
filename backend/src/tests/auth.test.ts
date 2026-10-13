@@ -154,6 +154,27 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
             expect(response.body.user.restaurant_id).toBe('tenant-demo');
         });
 
+        it('debe rechazar login si el empleado está inactivo (desactivado)', async () => {
+            const deactivatedUser = {
+                id: '123',
+                email: 'despedido@demo.com',
+                password_hash: 'hashed_secret',
+                role: 'waiter',
+                restaurant_id: 'tenant-demo',
+                is_active: false,
+                is_logged_in: 0
+            };
+
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [deactivatedUser] });
+
+            const response = await request(app)
+                .post('/api/auth/login')
+                .send({ email: 'despedido@demo.com', password: 'password123' });
+
+            expect(response.status).toBe(403);
+            expect(response.body.error).toBe('user_deactivated');
+        });
+
         it('debe rechazar login si ya hay sesión activa en otro dispositivo', async () => {
             const user = {
                 id: '123',
@@ -416,11 +437,37 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
 
         it('debe actualizar rol con éxito', async () => {
             mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
-            (pool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rowCount: 1,
+                rows: [{ id: 'user-1', role: 'kitchen', is_active: true }]
+            });
 
             const res = await request(app).patch('/api/auth/staff/user-1').send({ role: 'kitchen' });
             expect(res.status).toBe(200);
             expect(res.body.status).toBe('ok');
+        });
+
+        it('debe actualizar isActive para desactivar empleado', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rowCount: 1,
+                rows: [{ id: 'user-1', role: 'waiter', is_active: false }]
+            });
+
+            const res = await request(app).patch('/api/auth/staff/user-1').send({ isActive: false });
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('ok');
+            expect(pool.query).toHaveBeenCalledWith(
+                expect.stringContaining('is_logged_in = 0'),
+                expect.any(Array)
+            );
+        });
+
+        it('debe impedir que el admin desactive su propia cuenta', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            const res = await request(app).patch('/api/auth/staff/admin-1').send({ isActive: false });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('No puedes desactivar tu propia cuenta');
         });
     });
 
@@ -431,13 +478,46 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
             expect(res.status).toBe(400);
         });
 
-        it('debe eliminar empleado del mismo restaurante', async () => {
+        it('debe eliminar físicamente empleado sin historial asociado', async () => {
             mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            // 1. Verificación existencia
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ id: 'user-2', email: 'user2@demo.com', restaurant_id: 'tenant-1' }]
+            });
+            // 2. Verificación historial
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ order_count: '0', session_count: '0' }]
+            });
+            // 3. DELETE físico
             (pool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
 
             const res = await request(app).delete('/api/auth/staff/user-2');
             expect(res.status).toBe(200);
             expect(res.body.status).toBe('ok');
+            expect(res.body.action).toBe('deleted');
+        });
+
+        it('debe desactivar de forma segura (soft-delete) empleado con historial', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            // 1. Verificación existencia
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ id: 'user-2', email: 'user2@demo.com', restaurant_id: 'tenant-1' }]
+            });
+            // 2. Verificación historial (tiene órdenes)
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ order_count: '5', session_count: '0' }]
+            });
+            // 3. UPDATE de desactivación
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+
+            const res = await request(app).delete('/api/auth/staff/user-2');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('deactivated');
+            expect(res.body.action).toBe('deactivated');
+            expect(pool.query).toHaveBeenCalledWith(
+                expect.stringContaining('UPDATE profiles SET is_active = false'),
+                ['user-2']
+            );
         });
     });
 

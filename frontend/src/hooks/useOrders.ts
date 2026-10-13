@@ -18,6 +18,7 @@ export interface Order {
     id: number;
     table_id: number;
     server_id: string;
+    server_name?: string;
     status: 'pending' | 'cooking' | 'ready' | 'delivered' | 'completed' | 'cancelled';
     total_amount: number;
     created_at: string;
