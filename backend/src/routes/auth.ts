@@ -7,6 +7,8 @@ import { TenantRequest } from '../middleware/tenant';
 import {
     validateRegisterInput,
     validateRoleUpdate,
+    validateStaffUpdate,
+    isStaffActive,
     canUserAccessTenant,
     isUserLimitReached
 } from '../utils/userValidation';
@@ -33,6 +35,14 @@ router.post('/login', async (req: TenantRequest, res) => {
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
+        }
+
+        // Comprobación de estado activo (Cuenta no desactivada)
+        if (!isStaffActive(user)) {
+            return res.status(403).json({
+                error: 'user_deactivated',
+                message: 'Esta cuenta ha sido desactivada por la administración del restaurante.'
+            });
         }
 
         // Validación de Aislamiento Multi-Tenant (El usuario debe pertenecer al restaurante del contexto o ser superadmin)
@@ -192,26 +202,26 @@ router.post('/register', authenticateToken, async (req: AuthRequest & TenantRequ
             return res.status(400).json({ error: 'Se requiere un restaurante válido para vincular al empleado.' });
         }
 
-        // Validar límite de usuarios según el plan del restaurante
+        // Validar límite de usuarios según el plan del restaurante (solo usuarios activos cuentan para el límite)
         if (targetRestaurantId && req.tenant?.plan?.max_users) {
             const countRes = await pool.query(
-                'SELECT COUNT(*) FROM profiles WHERE restaurant_id = $1',
+                'SELECT COUNT(*) FROM profiles WHERE restaurant_id = $1 AND (is_active = true OR is_active IS NULL)',
                 [targetRestaurantId]
             );
             const currentCount = parseInt(countRes.rows[0].count, 10);
             if (isUserLimitReached(currentCount, req.tenant.plan.max_users)) {
                 return res.status(400).json({
                     error: 'user_limit_reached',
-                    message: `Has alcanzado el límite máximo de ${req.tenant.plan.max_users} usuarios para tu plan actual.`
+                    message: `Has alcanzado el límite máximo de ${req.tenant.plan.max_users} usuarios activos para tu plan actual.`
                 });
             }
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const { rows } = await pool.query(
-            `INSERT INTO profiles (id, email, full_name, role, password_hash, is_logged_in, restaurant_id)
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, $5)
-             RETURNING id, email, full_name, role, restaurant_id, created_at`,
+            `INSERT INTO profiles (id, email, full_name, role, password_hash, is_logged_in, restaurant_id, is_active)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, $5, true)
+             RETURNING id, email, full_name, role, restaurant_id, is_active, created_at`,
             [email.trim().toLowerCase(), fullName.trim(), role, hashedPassword, targetRestaurantId]
         );
 
@@ -245,28 +255,38 @@ router.get('/staff', authenticateToken, async (req: AuthRequest & TenantRequest,
             ? null
             : (req.user.restaurant_id || req.tenant?.id);
 
-        let query = 'SELECT id, email, full_name, role, restaurant_id, created_at FROM profiles';
+        const { status } = req.query;
+        const whereClauses: string[] = [];
         const params: any[] = [];
 
         if (targetRestaurantId) {
-            query += ' WHERE restaurant_id = $1';
             params.push(targetRestaurantId);
+            whereClauses.push(`restaurant_id = $${params.length}`);
         }
 
+        if (status === 'active') {
+            whereClauses.push('(is_active = true OR is_active IS NULL)');
+        } else if (status === 'inactive') {
+            whereClauses.push('is_active = false');
+        }
+
+        let query = 'SELECT id, email, full_name, role, is_active, restaurant_id, created_at FROM profiles';
+        if (whereClauses.length > 0) {
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
+        }
         query += ' ORDER BY created_at DESC';
-        const { rows } = await pool.query(query, params);
-        res.json(rows);
+
+        const { rows = [] } = await pool.query(query, params);
+        res.json(rows.map((r: any) => ({ ...r, is_active: r.is_active !== false })));
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
     }
 });
 
-// Actualizar Rol Staff (Aislado por Restaurante)
+// Actualizar Rol y/o Estado Staff (Aislado por Restaurante)
 router.patch('/staff/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { id } = req.params;
-    const { role } = req.body;
-
-    const validation = validateRoleUpdate(role);
+    const validation = validateStaffUpdate(req.body);
     if (!validation.isValid) {
         return res.status(400).json({ error: validation.error });
     }
@@ -276,27 +296,52 @@ router.patch('/staff/:id', authenticateToken, async (req: AuthRequest & TenantRe
             return res.status(403).json({ error: 'Solo administradores.' });
         }
 
+        const { role, isActive } = req.body;
+
+        if (isActive === false && id === req.user.id) {
+            return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta de administrador.' });
+        }
+
         const targetRestaurantId = req.user.role === 'superadmin' ? null : (req.user.restaurant_id || req.tenant?.id);
-        let query = 'UPDATE profiles SET role = $1 WHERE id = $2';
-        const params: any[] = [role, id];
+
+        const setClauses: string[] = [];
+        const params: any[] = [];
+
+        if (role !== undefined) {
+            params.push(role);
+            setClauses.push(`role = $${params.length}`);
+        }
+
+        if (isActive !== undefined) {
+            params.push(Boolean(isActive));
+            setClauses.push(`is_active = $${params.length}`);
+            if (isActive === false) {
+                setClauses.push('is_logged_in = 0');
+            }
+        }
+
+        params.push(id);
+        let query = `UPDATE profiles SET ${setClauses.join(', ')} WHERE id = $${params.length}`;
 
         if (targetRestaurantId) {
-            query += ' AND restaurant_id = $3';
             params.push(targetRestaurantId);
+            query += ` AND restaurant_id = $${params.length}`;
         }
+
+        query += ' RETURNING id, email, full_name, role, is_active, restaurant_id';
 
         const result = await pool.query(query, params);
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado o no pertenece a tu restaurante.' });
         }
 
-        res.json({ status: 'ok' });
+        res.json({ status: 'ok', user: result.rows?.[0] || null });
     } catch (error: any) {
         res.status(500).json({ error: 'Error del servidor' });
     }
 });
 
-// Eliminar Usuario Staff (Aislado por Restaurante)
+// Eliminar o Desactivar Usuario Staff (Aislado por Restaurante con Preservación Contable)
 router.delete('/staff/:id', authenticateToken, async (req: AuthRequest & TenantRequest, res) => {
     const { id } = req.params;
 
@@ -310,22 +355,54 @@ router.delete('/staff/:id', authenticateToken, async (req: AuthRequest & TenantR
         }
 
         const targetRestaurantId = req.user.role === 'superadmin' ? null : (req.user.restaurant_id || req.tenant?.id);
-        let query = 'DELETE FROM profiles WHERE id = $1';
-        const params: any[] = [id];
 
+        // Verificar existencia y pertenencia al inquilino
+        let checkQuery = 'SELECT id, email, full_name, restaurant_id FROM profiles WHERE id = $1';
+        const checkParams: any[] = [id];
         if (targetRestaurantId) {
-            query += ' AND restaurant_id = $2';
-            params.push(targetRestaurantId);
+            checkQuery += ' AND restaurant_id = $2';
+            checkParams.push(targetRestaurantId);
         }
 
-        const result = await pool.query(query, params);
-        if (result.rowCount === 0) {
+        const { rows: userRows = [] } = await pool.query(checkQuery, checkParams);
+        if (!userRows || userRows.length === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado o no pertenece a tu restaurante.' });
         }
 
-        res.json({ status: 'ok', message: 'Usuario eliminado correctamente' });
+        // Comprobar si el usuario tiene registros vinculados en órdenes o turnos de caja
+        const { rows: depRows } = await pool.query(`
+            SELECT 
+                (SELECT COUNT(*) FROM orders WHERE server_id = $1) as order_count,
+                (SELECT COUNT(*) FROM cash_register_sessions WHERE user_id = $1) as session_count
+        `, [id]);
+
+        const orderCount = parseInt(depRows[0]?.order_count || '0', 10);
+        const sessionCount = parseInt(depRows[0]?.session_count || '0', 10);
+
+        if (orderCount > 0 || sessionCount > 0) {
+            // Desactivación segura (Soft Delete) para preservar la integridad de datos históricos
+            await pool.query(
+                'UPDATE profiles SET is_active = false, is_logged_in = 0 WHERE id = $1',
+                [id]
+            );
+
+            return res.json({
+                status: 'deactivated',
+                action: 'deactivated',
+                message: 'El empleado tiene historial de comandas o turnos de caja registrados. Para proteger la integridad contable, ha sido desactivado de forma segura y se le revocó el acceso.'
+            });
+        }
+
+        // Eliminación física si no tiene historial asociado
+        await pool.query('DELETE FROM profiles WHERE id = $1', [id]);
+
+        res.json({
+            status: 'ok',
+            action: 'deleted',
+            message: 'Usuario eliminado correctamente'
+        });
     } catch (error: any) {
-        res.status(500).json({ error: 'Error del servidor' });
+        res.status(500).json({ error: error.message || 'Error del servidor' });
     }
 });
 

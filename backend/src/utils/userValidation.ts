@@ -58,6 +58,47 @@ export function validateRoleUpdate(role: unknown): ValidationResult {
     return { isValid: true };
 }
 
+export interface StaffUpdateInput {
+    role?: unknown;
+    isActive?: unknown;
+}
+
+/**
+ * SRP: Valida las actualizaciones de personal (rol y/o estado de activación)
+ */
+export function validateStaffUpdate(input: StaffUpdateInput): ValidationResult {
+    if (!input || typeof input !== 'object') {
+        return { isValid: false, error: 'Datos de actualización requeridos' };
+    }
+
+    const { role, isActive } = input;
+
+    if (role === undefined && isActive === undefined) {
+        return { isValid: false, error: 'Se debe proporcionar al menos un campo para actualizar (rol o isActive)' };
+    }
+
+    if (role !== undefined) {
+        const roleValidation = validateRoleUpdate(role);
+        if (!roleValidation.isValid) {
+            return roleValidation;
+        }
+    }
+
+    if (isActive !== undefined && typeof isActive !== 'boolean') {
+        return { isValid: false, error: 'El campo isActive debe ser un valor booleano' };
+    }
+
+    return { isValid: true };
+}
+
+/**
+ * SRP: Determina si el empleado se encuentra activo en el sistema
+ */
+export function isStaffActive(user?: { is_active?: boolean | null }): boolean {
+    if (!user) return false;
+    return user.is_active !== false;
+}
+
 /**
  * Regla de negocio SRP: Determina si un usuario tiene autorización para acceder a un restaurante (Tenant)
  * @param userRestaurantId - ID del restaurante al que pertenece el usuario

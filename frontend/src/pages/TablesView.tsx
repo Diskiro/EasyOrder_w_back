@@ -6,7 +6,7 @@ import { useCategories, useProducts, type Product } from '../hooks/useMenu'
 import { useOrderMutation, useActiveOrders, useUpdateOrderItems } from '../hooks/useOrders'
 import { useReservationMutations, type Reservation } from '../hooks/useReservations'
 import { useAuth } from '../context/AuthContext'
-import { Search, ShoppingCart, CheckCircle, LayoutGrid, List as ListIcon, ChevronLeft } from 'lucide-react'
+import { Search, ShoppingCart, CheckCircle, LayoutGrid, List as ListIcon, ChevronLeft, User } from 'lucide-react'
 import { Button, ButtonGroup } from '@mui/material'
 import { useLocation } from 'react-router-dom'
 import TableGrid from '../components/tables/TableGrid'
@@ -274,11 +274,13 @@ export default function TablesView() {
                                     tables={tables}
                                     onTableClick={handleTableClick}
                                     assigningReservation={assigningReservation}
+                                    activeOrders={activeOrders}
                                 />
                             ) : (
                                 <TableList
                                     tables={tables}
                                     onTableClick={handleTableClick}
+                                    activeOrders={activeOrders}
                                 />
                             )}
                         </>
@@ -295,6 +297,12 @@ export default function TablesView() {
                                         <h2 className="text-2xl font-bold text-white whitespace-nowrap">
                                             Mesa {selectedTable?.number}
                                         </h2>
+                                        {activeOrder?.server_name && (
+                                            <span className="text-xs bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/30 px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
+                                                <User size={12} />
+                                                Atiende: {activeOrder.server_name}
+                                            </span>
+                                        )}
                                         {selectedTable?.status === 'occupied' && !activeOrder && (
                                             <Button
                                                 variant="outlined"

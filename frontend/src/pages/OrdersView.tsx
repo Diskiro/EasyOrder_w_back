@@ -1,6 +1,6 @@
 import { useActiveOrders, useUpdateOrderStatus, type Order } from '../hooks/useOrders'
 import { useTables } from '../hooks/useTables'
-import { Clock, CheckCircle, ChefHat, Bell, DollarSign, UtensilsCrossed, Edit } from 'lucide-react'
+import { Clock, CheckCircle, ChefHat, Bell, DollarSign, UtensilsCrossed, Edit, User } from 'lucide-react'
 import { Button } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -119,6 +119,12 @@ export default function OrdersView() {
                                                                 <Clock size={10} />
                                                                 <span>{timeElapsed}m</span>
                                                             </div>
+                                                            {order.server_name && (
+                                                                <div className="flex items-center gap-1 text-[11px] text-amber-300 font-medium mt-1" title={`Mesero asignado: ${order.server_name}`}>
+                                                                    <User size={11} className="shrink-0 text-[#FBBF24]" />
+                                                                    <span className="truncate max-w-[120px]">{order.server_name}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1", STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG]?.color)}>
                                                             <StatusIcon size={10} />
