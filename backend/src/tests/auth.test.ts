@@ -266,6 +266,37 @@ describe('Auth API Endpoints & Multi-Tenant Isolation', () => {
                 ['tenant-1']
             );
         });
+
+        it('debe auto-migrar y reintentar si la columna is_active no existe (código 42703)', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            const missingColErr: any = new Error('column is_active does not exist');
+            missingColErr.code = '42703';
+
+            (pool.query as jest.Mock).mockRejectedValueOnce(missingColErr);
+            (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+            (pool.query as jest.Mock).mockResolvedValueOnce({
+                rows: [{ id: 'user-1', email: 'mesero@demo.com', role: 'waiter', is_active: true }]
+            });
+
+            const res = await request(app).get('/api/auth/staff');
+            expect(res.status).toBe(200);
+            expect(res.body).toHaveLength(1);
+            expect(pool.query).toHaveBeenCalledWith(
+                expect.stringContaining('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active')
+            );
+        });
+
+        it('debe responder 500 y loguear error si ocurre una falla inesperada en base de datos', async () => {
+            mockUser = { id: 'admin-1', role: 'admin', restaurant_id: 'tenant-1' };
+            const spyError = jest.spyOn(console, 'error').mockImplementation(() => {});
+            (pool.query as jest.Mock).mockRejectedValueOnce(new Error('Fatal DB Error'));
+
+            const res = await request(app).get('/api/auth/staff');
+            expect(res.status).toBe(500);
+            expect(res.body.error).toBe('Error del servidor');
+            expect(spyError).toHaveBeenCalled();
+            spyError.mockRestore();
+        });
     });
 
     describe('GET /api/auth/me', () => {
