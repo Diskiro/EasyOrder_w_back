@@ -198,3 +198,18 @@ export function createTenantDeleteHandler(tableName: string, notFoundMsg: string
         }
     };
 }
+
+/**
+ * SRP: Asegura la integridad del esquema en tiempo de ejecución (auto-migraciones idempotentes)
+ */
+export async function ensureStaffSchema(): Promise<void> {
+    try {
+        await pool.query(`
+            ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+            UPDATE profiles SET is_active = TRUE WHERE is_active IS NULL;
+        `);
+    } catch (err: any) {
+        console.error('Error al asegurar esquema de profiles:', err?.message || err);
+    }
+}
+
