@@ -371,30 +371,30 @@ function StaffCard({
     const toggleTitle = getToggleActionTitle(isCurrentUser, isActive)
 
     return (
-        <div className="bg-[#1F2329] rounded-2xl border border-gray-800 p-4 shadow-lg space-y-3.5">
+        <div className="bg-[#1A1D21] rounded-2xl border border-gray-800/80 p-4 shadow-lg hover:border-gray-700/80 transition-all flex flex-col justify-between gap-3.5">
             {/* Top row: Avatar, Info & Status */}
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="bg-gray-700 h-10 w-10 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-inner shrink-0 border border-gray-700/50">
                         {profile.full_name?.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                            <p className="text-white font-medium truncate">{profile.full_name || 'Sin Nombre'}</p>
+                            <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
                             {isCurrentUser && (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
                                     Tú
                                 </span>
                             )}
                         </div>
-                        <p className="text-gray-400 text-xs truncate">{profile.email}</p>
+                        <p className="text-gray-400 text-xs truncate mt-0.5">{profile.email}</p>
                     </div>
                 </div>
                 <StaffStatusBadge isActive={isActive} />
             </div>
 
             {/* Middle row: Role & Registration Date */}
-            <div className="flex items-center justify-between pt-2.5 border-t border-gray-800/80 text-xs">
+            <div className="flex items-center justify-between pt-2.5 border-t border-gray-800/60 text-xs">
                 <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-medium">Rol:</span>
                     <StaffRoleBadge
@@ -404,13 +404,13 @@ function StaffCard({
                         onChangeRole={onChangeRole}
                     />
                 </div>
-                <span className="text-gray-500">
+                <span className="text-gray-500 text-[11px]">
                     {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : '-'}
                 </span>
             </div>
 
             {/* Bottom row: Action Buttons */}
-            <div className="pt-2.5 border-t border-gray-800/80 flex items-center justify-end">
+            <div className="pt-2.5 border-t border-gray-800/60 flex items-center justify-end">
                 <StaffActionButtons
                     profile={profile}
                     isCurrentUser={isCurrentUser}
@@ -445,29 +445,32 @@ function StaffTableRow({
     const toggleTitle = getToggleActionTitle(isCurrentUser, isActive)
 
     return (
-        <tr className="hover:bg-[#2A2E35] transition-colors group">
+        <tr className="hover:bg-[#22262C] transition-colors group">
             {/* Name / Email */}
-            <td className="px-6 py-4">
+            <td className="py-3.5 px-4 lg:px-5">
                 <div className="flex items-center">
-                    <div className="bg-gray-700 h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 shrink-0">
+                    <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold mr-3 shrink-0 border border-gray-700/50">
                         {profile.full_name?.charAt(0).toUpperCase() || '?'}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                            <p className="text-white font-medium">{profile.full_name || 'Sin Nombre'}</p>
+                            <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
                             {isCurrentUser && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
                                     Tú
                                 </span>
                             )}
                         </div>
-                        <p className="text-gray-500 text-sm">{profile.email}</p>
+                        <p className="text-gray-400 text-xs truncate mt-0.5">{profile.email}</p>
+                        <p className="text-gray-500 text-[11px] xl:hidden mt-0.5">
+                            {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : ''}
+                        </p>
                     </div>
                 </div>
             </td>
 
             {/* Role */}
-            <td className="px-6 py-4">
+            <td className="py-3.5 px-3 lg:px-4">
                 <StaffRoleBadge
                     role={profile.role}
                     isEditing={isEditing}
@@ -477,17 +480,17 @@ function StaffTableRow({
             </td>
 
             {/* Status Badge */}
-            <td className="px-6 py-4">
+            <td className="py-3.5 px-3 lg:px-4">
                 <StaffStatusBadge isActive={isActive} />
             </td>
 
-            {/* Registration Date */}
-            <td className="px-6 py-4 text-gray-400 text-sm">
+            {/* Registration Date (Hidden on 1024px screens, shown on >= 1280px) */}
+            <td className="py-3.5 px-3 lg:px-4 text-gray-400 text-xs hidden xl:table-cell whitespace-nowrap">
                 {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : '-'}
             </td>
 
             {/* Actions */}
-            <td className="px-6 py-4 text-right">
+            <td className="py-3.5 px-4 lg:px-5 text-right whitespace-nowrap">
                 <StaffActionButtons
                     profile={profile}
                     isCurrentUser={isCurrentUser}
@@ -641,28 +644,30 @@ export default function StaffManagement() {
     if (error) return <div className="p-8 text-red-500">Error al cargar personal</div>
 
     return (
-        <div className="flex-1 h-full overflow-y-auto bg-[#111315] p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
+        <div className="w-full p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
             {/* Header */}
-            <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-5">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 flex items-center gap-2">
-                        <Users className="text-[#FBBF24]" size={28} />
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                        <Users className="text-[#FBBF24] shrink-0" size={28} />
                         Gestión de Personal
                     </h1>
-                    <p className="text-gray-400 text-xs sm:text-sm">Administra roles, accesos activos y desvinculaciones del equipo.</p>
+                    <p className="text-gray-400 text-xs sm:text-sm mt-1">
+                        Administra roles, accesos activos y desvinculaciones del equipo.
+                    </p>
                 </div>
                 <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center justify-center px-4 py-2.5 bg-[#FBBF24] text-black font-bold rounded-xl hover:bg-yellow-500 transition-colors shadow-lg shadow-yellow-500/10 cursor-pointer text-sm w-full sm:w-auto"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FBBF24] text-black font-bold text-sm rounded-xl hover:bg-yellow-400 active:scale-95 transition-all shadow-lg shadow-yellow-500/10 cursor-pointer self-start sm:self-auto shrink-0"
                 >
-                    <UserPlus size={18} className="mr-2" />
-                    Nuevo Usuario
+                    <UserPlus size={18} />
+                    <span>Nuevo Usuario</span>
                 </button>
             </header>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 custom-scrollbar">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
                 {(['all', 'active', 'inactive'] as StatusFilter[]).map((filter) => {
                     const label = getFilterLabel(filter)
                     const isSelected = statusFilter === filter
@@ -673,8 +678,8 @@ export default function StaffManagement() {
                             onClick={() => setStatusFilter(filter)}
                             className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                                 isSelected
-                                    ? 'bg-[#FBBF24] text-black shadow-md'
-                                    : 'bg-[#1F2329] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
+                                    ? 'bg-[#FBBF24] text-black shadow-md font-bold'
+                                    : 'bg-[#1A1D21] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
                             }`}
                         >
                             {label}
@@ -683,8 +688,8 @@ export default function StaffManagement() {
                 })}
             </div>
 
-            {/* Mobile Cards View (< md) */}
-            <div className="md:hidden space-y-3">
+            {/* Adaptive Cards Grid (Mobile 1-col, Tablet 2-col: < lg) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
                 {profiles?.map((profile) => (
                     <StaffCard
                         key={profile.id}
@@ -702,19 +707,19 @@ export default function StaffManagement() {
                 ))}
             </div>
 
-            {/* Desktop Table View (>= md) */}
-            <div className="hidden md:block bg-[#1F2329] rounded-2xl border border-gray-800 overflow-x-auto shadow-xl custom-scrollbar">
-                <table className="w-full text-left">
-                    <thead className="bg-[#141619] text-gray-400 text-xs uppercase font-semibold">
+            {/* Desktop Table View (>= lg, 1024px+) - Completely fits without horizontal scroll */}
+            <div className="hidden lg:block bg-[#1A1D21] rounded-2xl border border-gray-800/80 shadow-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-[#141619] text-gray-400 text-xs uppercase font-semibold tracking-wider border-b border-gray-800">
                         <tr>
-                            <th className="px-6 py-4">Empleado / Correo</th>
-                            <th className="px-6 py-4">Rol</th>
-                            <th className="px-6 py-4">Estado</th>
-                            <th className="px-6 py-4">Fecha Registro</th>
-                            <th className="px-6 py-4 text-right">Acciones</th>
+                            <th className="py-3.5 px-4 lg:px-5">Empleado / Correo</th>
+                            <th className="py-3.5 px-3 lg:px-4 w-32">Rol</th>
+                            <th className="py-3.5 px-3 lg:px-4 w-28">Estado</th>
+                            <th className="py-3.5 px-3 lg:px-4 w-36 hidden xl:table-cell">Fecha Registro</th>
+                            <th className="py-3.5 px-4 lg:px-5 text-right w-36">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800">
+                    <tbody className="divide-y divide-gray-800/60 text-sm">
                         {profiles?.map((profile) => (
                             <StaffTableRow
                                 key={profile.id}
@@ -735,7 +740,7 @@ export default function StaffManagement() {
             </div>
 
             {profiles?.length === 0 && (
-                <div className="p-8 text-center text-gray-500 bg-[#1F2329] rounded-2xl border border-gray-800">
+                <div className="p-8 text-center text-gray-500 bg-[#1A1D21] rounded-2xl border border-gray-800">
                     No se encontró personal para el filtro seleccionado.
                 </div>
             )}
