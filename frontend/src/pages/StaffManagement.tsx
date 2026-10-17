@@ -273,7 +273,6 @@ interface StaffActionButtonsProps {
     onCancelEdit: () => void
     onToggleStatus: (profile: Profile) => void
     onDeleteStaff: (profile: Profile) => void
-    isMobile?: boolean
 }
 
 function StaffActionButtons({
@@ -286,16 +285,16 @@ function StaffActionButtons({
     onSaveRole,
     onCancelEdit,
     onToggleStatus,
-    onDeleteStaff,
-    isMobile = false
+    onDeleteStaff
 }: Readonly<StaffActionButtonsProps>) {
     if (isEditing) {
         return (
-            <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-end' : 'justify-end'}`}>
+            <div className="flex items-center gap-2 w-full justify-end sm:w-auto">
                 <button
                     type="button"
                     onClick={() => onSaveRole(profile.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 rounded-xl cursor-pointer transition-colors"
+                    aria-label={`Guardar rol para ${profile.full_name || profile.email}`}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 rounded-xl cursor-pointer transition-colors active:scale-95"
                     title="Guardar"
                 >
                     <Check size={16} />
@@ -304,7 +303,8 @@ function StaffActionButtons({
                 <button
                     type="button"
                     onClick={onCancelEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 rounded-xl cursor-pointer transition-colors"
+                    aria-label="Cancelar edición de rol"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 rounded-xl cursor-pointer transition-colors active:scale-95"
                     title="Cancelar"
                 >
                     <X size={16} />
@@ -315,22 +315,24 @@ function StaffActionButtons({
     }
 
     return (
-        <div className={`flex items-center gap-1.5 ${isMobile ? 'w-full justify-end' : 'justify-end'}`}>
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full justify-end sm:w-auto flex-wrap">
             <button
                 type="button"
                 onClick={() => onEditClick(profile)}
-                className="p-2 text-gray-300 hover:text-white bg-gray-800/80 hover:bg-gray-700 border border-gray-700/60 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium"
+                aria-label={`Editar rol de ${profile.full_name || profile.email}`}
+                className="px-3 py-1.5 text-gray-300 hover:text-white bg-gray-800/80 hover:bg-gray-700 border border-gray-700/60 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium active:scale-95"
                 title="Editar Rol"
             >
                 <Edit2 size={15} />
-                {isMobile && <span>Rol</span>}
+                <span>Rol</span>
             </button>
 
             <button
                 type="button"
                 disabled={isCurrentUser}
                 onClick={() => void onToggleStatus(profile)}
-                className={`p-2 rounded-xl border transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium ${
+                aria-label={toggleTitle}
+                className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium active:scale-95 ${
                     isActive
                         ? 'text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300'
                         : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300'
@@ -338,18 +340,19 @@ function StaffActionButtons({
                 title={toggleTitle}
             >
                 {isActive ? <UserX size={15} /> : <UserCheck size={15} />}
-                {isMobile && <span>{isActive ? 'Desactivar' : 'Reactivar'}</span>}
+                <span>{isActive ? 'Desactivar' : 'Reactivar'}</span>
             </button>
 
             <button
                 type="button"
                 disabled={isCurrentUser}
                 onClick={() => void onDeleteStaff(profile)}
-                className="p-2 text-rose-400 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 hover:text-rose-300 rounded-xl transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium"
+                aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : `Eliminar a ${profile.full_name || profile.email}`}
+                className="px-3 py-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 hover:text-rose-300 rounded-xl transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium active:scale-95"
                 title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar personal'}
             >
                 <Trash2 size={15} />
-                {isMobile && <span>Eliminar</span>}
+                <span>Eliminar</span>
             </button>
         </div>
     )
@@ -371,32 +374,29 @@ function StaffCard({
     const toggleTitle = getToggleActionTitle(isCurrentUser, isActive)
 
     return (
-        <div className="bg-[#1A1D21] rounded-2xl border border-gray-800/80 p-4 shadow-lg hover:border-gray-700/80 transition-all flex flex-col justify-between gap-3.5">
-            {/* Top row: Avatar, Info & Status */}
-            <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-inner shrink-0 border border-gray-700/50">
-                        {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
-                            {isCurrentUser && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
-                                    Tú
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-gray-400 text-xs truncate mt-0.5">{profile.email}</p>
-                    </div>
+        <div className="bg-[#1A1D21] rounded-2xl border border-gray-800/80 p-4 sm:p-5 shadow-lg hover:border-gray-700/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+            {/* Left section: Avatar & Employee Info */}
+            <div className="flex items-center gap-3.5 min-w-0 md:w-5/12">
+                <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-inner shrink-0 border border-gray-700/50">
+                    {profile.full_name?.charAt(0).toUpperCase() || '?'}
                 </div>
-                <StaffStatusBadge isActive={isActive} />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
+                        {isCurrentUser && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
+                                Tú
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-gray-400 text-xs truncate mt-0.5 break-all">{profile.email}</p>
+                </div>
             </div>
 
-            {/* Middle row: Role & Registration Date */}
-            <div className="flex items-center justify-between pt-2.5 border-t border-gray-800/60 text-xs">
+            {/* Middle section: Role, Status & Date */}
+            <div className="flex items-center justify-between md:justify-center gap-3 sm:gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-gray-800/60 text-xs md:w-3/12">
                 <div className="flex items-center gap-2">
-                    <span className="text-gray-500 font-medium">Rol:</span>
+                    <span className="text-gray-500 font-medium md:hidden">Rol:</span>
                     <StaffRoleBadge
                         role={profile.role}
                         isEditing={isEditing}
@@ -404,13 +404,14 @@ function StaffCard({
                         onChangeRole={onChangeRole}
                     />
                 </div>
-                <span className="text-gray-500 text-[11px]">
+                <StaffStatusBadge isActive={isActive} />
+                <span className="text-gray-500 text-[11px] hidden sm:inline whitespace-nowrap">
                     {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : '-'}
                 </span>
             </div>
 
-            {/* Bottom row: Action Buttons */}
-            <div className="pt-2.5 border-t border-gray-800/60 flex items-center justify-end">
+            {/* Right section: Action Buttons */}
+            <div className="pt-3 md:pt-0 border-t md:border-t-0 border-gray-800/60 flex items-center justify-end md:w-4/12 shrink-0">
                 <StaffActionButtons
                     profile={profile}
                     isCurrentUser={isCurrentUser}
@@ -422,90 +423,9 @@ function StaffCard({
                     onCancelEdit={onCancelEdit}
                     onToggleStatus={onToggleStatus}
                     onDeleteStaff={onDeleteStaff}
-                    isMobile={true}
                 />
             </div>
         </div>
-    )
-}
-
-function StaffTableRow({
-    profile,
-    isCurrentUser,
-    isEditing,
-    selectedRole,
-    onEditClick,
-    onSaveRole,
-    onCancelEdit,
-    onChangeRole,
-    onToggleStatus,
-    onDeleteStaff
-}: Readonly<StaffItemProps>) {
-    const isActive = profile.is_active !== false
-    const toggleTitle = getToggleActionTitle(isCurrentUser, isActive)
-
-    return (
-        <tr className="hover:bg-[#22262C] transition-colors group">
-            {/* Name / Email */}
-            <td className="py-3.5 px-4 lg:px-5">
-                <div className="flex items-center">
-                    <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold mr-3 shrink-0 border border-gray-700/50">
-                        {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
-                            {isCurrentUser && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
-                                    Tú
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-gray-400 text-xs truncate mt-0.5">{profile.email}</p>
-                        <p className="text-gray-500 text-[11px] xl:hidden mt-0.5">
-                            {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : ''}
-                        </p>
-                    </div>
-                </div>
-            </td>
-
-            {/* Role */}
-            <td className="py-3.5 px-3 lg:px-4">
-                <StaffRoleBadge
-                    role={profile.role}
-                    isEditing={isEditing}
-                    selectedRole={selectedRole}
-                    onChangeRole={onChangeRole}
-                />
-            </td>
-
-            {/* Status Badge */}
-            <td className="py-3.5 px-3 lg:px-4">
-                <StaffStatusBadge isActive={isActive} />
-            </td>
-
-            {/* Registration Date (Hidden on 1024px screens, shown on >= 1280px) */}
-            <td className="py-3.5 px-3 lg:px-4 text-gray-400 text-xs hidden xl:table-cell whitespace-nowrap">
-                {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : '-'}
-            </td>
-
-            {/* Actions */}
-            <td className="py-3.5 px-4 lg:px-5 text-right whitespace-nowrap">
-                <StaffActionButtons
-                    profile={profile}
-                    isCurrentUser={isCurrentUser}
-                    isEditing={isEditing}
-                    isActive={isActive}
-                    toggleTitle={toggleTitle}
-                    onEditClick={onEditClick}
-                    onSaveRole={onSaveRole}
-                    onCancelEdit={onCancelEdit}
-                    onToggleStatus={onToggleStatus}
-                    onDeleteStaff={onDeleteStaff}
-                    isMobile={false}
-                />
-            </td>
-        </tr>
     )
 }
 
@@ -644,13 +564,13 @@ export default function StaffManagement() {
     if (error) return <div className="p-8 text-red-500">Error al cargar personal</div>
 
     return (
-        <div className="w-full p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="w-full p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
             {/* Header */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-5">
-                <div>
+                <div className="min-w-0">
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
                         <Users className="text-[#FBBF24] shrink-0" size={28} />
-                        Gestión de Personal
+                        <span>Gestión de Personal</span>
                     </h1>
                     <p className="text-gray-400 text-xs sm:text-sm mt-1">
                         Administra roles, accesos activos y desvinculaciones del equipo.
@@ -659,6 +579,7 @@ export default function StaffManagement() {
                 <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(true)}
+                    aria-label="Crear nuevo usuario"
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FBBF24] text-black font-bold text-sm rounded-xl hover:bg-yellow-400 active:scale-95 transition-all shadow-lg shadow-yellow-500/10 cursor-pointer self-start sm:self-auto shrink-0"
                 >
                     <UserPlus size={18} />
@@ -688,8 +609,8 @@ export default function StaffManagement() {
                 })}
             </div>
 
-            {/* Adaptive Cards Grid (Mobile 1-col, Tablet 2-col: < lg) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
+            {/* Single-Column User Cards List */}
+            <div className="flex flex-col gap-3.5 w-full">
                 {profiles?.map((profile) => (
                     <StaffCard
                         key={profile.id}
@@ -705,38 +626,6 @@ export default function StaffManagement() {
                         onDeleteStaff={handleDeleteStaff}
                     />
                 ))}
-            </div>
-
-            {/* Desktop Table View (>= lg, 1024px+) - Completely fits without horizontal scroll */}
-            <div className="hidden lg:block bg-[#1A1D21] rounded-2xl border border-gray-800/80 shadow-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-[#141619] text-gray-400 text-xs uppercase font-semibold tracking-wider border-b border-gray-800">
-                        <tr>
-                            <th className="py-3.5 px-4 lg:px-5">Empleado / Correo</th>
-                            <th className="py-3.5 px-3 lg:px-4 w-32">Rol</th>
-                            <th className="py-3.5 px-3 lg:px-4 w-28">Estado</th>
-                            <th className="py-3.5 px-3 lg:px-4 w-36 hidden xl:table-cell">Fecha Registro</th>
-                            <th className="py-3.5 px-4 lg:px-5 text-right w-36">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/60 text-sm">
-                        {profiles?.map((profile) => (
-                            <StaffTableRow
-                                key={profile.id}
-                                profile={profile}
-                                isCurrentUser={profile.id === user?.id}
-                                isEditing={editingId === profile.id}
-                                selectedRole={selectedRole}
-                                onEditClick={handleEditClick}
-                                onSaveRole={handleSaveRole}
-                                onCancelEdit={handleCancelEdit}
-                                onChangeRole={setSelectedRole}
-                                onToggleStatus={handleToggleStatus}
-                                onDeleteStaff={handleDeleteStaff}
-                            />
-                        ))}
-                    </tbody>
-                </table>
             </div>
 
             {profiles?.length === 0 && (
