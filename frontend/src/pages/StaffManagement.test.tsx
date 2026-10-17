@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import StaffManagement from './StaffManagement'
 import * as api from '../lib/api'
@@ -98,7 +97,7 @@ describe('StaffManagement Component (Single-Column Responsive View & Actions)', 
     })
 
     it('debe permitir abrir la edición de rol y guardar el nuevo rol', async () => {
-        vi.spyOn(api, 'apiFetch').mockImplementation(async (endpoint, options) => {
+        vi.spyOn(api, 'apiFetch').mockImplementation(async (_endpoint, options) => {
             if (options?.method === 'PATCH') {
                 return { success: true }
             }
@@ -151,7 +150,7 @@ describe('StaffManagement Component (Single-Column Responsive View & Actions)', 
 
     it('debe solicitar confirmación y ejecutar la mutación de cambiar estado', async () => {
         mockShowConfirm.mockResolvedValue(true)
-        vi.spyOn(api, 'apiFetch').mockImplementation(async (endpoint, options) => {
+        vi.spyOn(api, 'apiFetch').mockImplementation(async (_endpoint, options) => {
             if (options?.method === 'PATCH') {
                 return { success: true }
             }
@@ -177,7 +176,7 @@ describe('StaffManagement Component (Single-Column Responsive View & Actions)', 
 
     it('debe solicitar confirmación y eliminar al empleado', async () => {
         mockShowConfirm.mockResolvedValue(true)
-        vi.spyOn(api, 'apiFetch').mockImplementation(async (endpoint, options) => {
+        vi.spyOn(api, 'apiFetch').mockImplementation(async (_endpoint, options) => {
             if (options?.method === 'DELETE') {
                 return { message: 'Empleado desvinculado con éxito' }
             }

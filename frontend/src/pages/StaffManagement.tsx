@@ -1,11 +1,25 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import { Shield, UserPlus, Edit2, Check, X, Loader2, UserCheck, UserX, Trash2, Users } from 'lucide-react'
+import {
+    Shield,
+    Users,
+    Plus,
+    Pencil,
+    UserCheck,
+    UserX,
+    User,
+    MoreVertical,
+    Calendar,
+    Check,
+    X,
+    Loader2
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useUI } from '../context/UIContext'
 import { useAuth } from '../context/AuthContext'
+import { useTenantOptional } from '../context/TenantContext'
 
 // --- Interfaces ---
 export interface Profile {
@@ -19,39 +33,23 @@ export interface Profile {
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-function getFilterLabel(filter: StatusFilter): string {
-    if (filter === 'active') return 'Activos'
-    if (filter === 'inactive') return 'Inactivos'
-    return 'Todos'
-}
-
 function getRoleBadge(role: string) {
     if (role === 'admin') {
         return {
-            className: 'bg-purple-900/60 text-purple-200 border-purple-700/50',
+            className: 'bg-[#2D1B4E] text-[#C084FC] border-[#A855F7]/40',
             label: 'Admin'
         }
     }
     if (role === 'kitchen') {
         return {
-            className: 'bg-orange-900/60 text-orange-200 border-orange-700/50',
+            className: 'bg-[#3B2214] text-[#FB923C] border-[#EA580C]/40',
             label: 'Cocina'
         }
     }
     return {
-        className: 'bg-blue-900/60 text-blue-200 border-blue-700/50',
+        className: 'bg-[#132A46] text-[#60A5FA] border-[#2563EB]/40',
         label: 'Mesero'
     }
-}
-
-function getToggleActionTitle(isCurrentUser: boolean, isActive: boolean): string {
-    if (isCurrentUser) {
-        return 'No puedes cambiar tu propio estado'
-    }
-    if (isActive) {
-        return 'Desactivar acceso'
-    }
-    return 'Reactivar acceso'
 }
 
 // --- Subcomponent: Create Staff Modal ---
@@ -105,11 +103,11 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[#1F2329] rounded-2xl border border-gray-800 w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#14171E] rounded-2xl border border-gray-800 w-full max-w-md p-6 shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <UserPlus size={20} className="text-[#FBBF24]" />
+                        <Users size={20} className="text-[#FBBF24]" />
                         Crear Nuevo Usuario
                     </h2>
                     <button
@@ -133,7 +131,7 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
                             required
                             value={newUserName}
                             onChange={e => setNewUserName(e.target.value)}
-                            className="w-full bg-[#141619] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors"
+                            className="w-full bg-[#0D0F13] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors text-sm"
                             placeholder="Ej. Juan Pérez"
                         />
                     </div>
@@ -148,7 +146,7 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
                             required
                             value={newUserEmail}
                             onChange={e => setNewUserEmail(e.target.value)}
-                            className="w-full bg-[#141619] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors"
+                            className="w-full bg-[#0D0F13] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors text-sm"
                             placeholder="correo@ejemplo.com"
                         />
                     </div>
@@ -164,7 +162,7 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
                             minLength={6}
                             value={newUserPassword}
                             onChange={e => setNewUserPassword(e.target.value)}
-                            className="w-full bg-[#141619] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors"
+                            className="w-full bg-[#0D0F13] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors text-sm"
                             placeholder="Mínimo 6 caracteres"
                         />
                     </div>
@@ -177,7 +175,7 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
                             id="create-role"
                             value={newUserRole}
                             onChange={e => setNewUserRole(e.target.value as any)}
-                            className="w-full bg-[#141619] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors"
+                            className="w-full bg-[#0D0F13] border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:border-[#FBBF24] outline-none transition-colors text-sm"
                         >
                             <option value="waiter">Mesero</option>
                             <option value="kitchen">Cocina</option>
@@ -188,9 +186,9 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
                     <button
                         type="submit"
                         disabled={isCreating}
-                        className="w-full bg-[#FBBF24] text-black font-bold py-3 rounded-xl hover:bg-yellow-500 transition-colors flex justify-center items-center mt-6 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="w-full bg-[#FBBF24] text-black font-bold py-3 rounded-xl hover:bg-yellow-400 active:scale-95 transition-all flex justify-center items-center mt-6 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-yellow-500/10 text-sm"
                     >
-                        {isCreating ? <Loader2 size={20} className="animate-spin" /> : 'Crear Usuario'}
+                        {isCreating ? <Loader2 size={18} className="animate-spin" /> : 'Crear Usuario'}
                     </button>
                 </form>
             </div>
@@ -198,164 +196,37 @@ function CreateStaffModal({ isOpen, onClose, onSuccess }: Readonly<CreateStaffMo
     )
 }
 
-// --- Subcomponents with SRP ---
-interface StaffItemProps {
-    profile: Profile
-    isCurrentUser: boolean
-    isEditing: boolean
-    selectedRole: string
-    onEditClick: (profile: Profile) => void
-    onSaveRole: (id: string) => void
-    onCancelEdit: () => void
-    onChangeRole: (role: string) => void
-    onToggleStatus: (profile: Profile) => void
-    onDeleteStaff: (profile: Profile) => void
-}
-
-interface StaffRoleBadgeProps {
-    role: string
-    isEditing: boolean
-    selectedRole: string
-    onChangeRole: (role: string) => void
-}
-
-function StaffRoleBadge({ role, isEditing, selectedRole, onChangeRole }: Readonly<StaffRoleBadgeProps>) {
-    if (isEditing) {
-        return (
-            <select
-                aria-label="Seleccionar rol"
-                value={selectedRole}
-                onChange={(e) => onChangeRole(e.target.value)}
-                className="bg-[#141619] text-white border border-gray-600 rounded-lg px-2.5 py-1 text-sm focus:border-[#FBBF24] outline-none"
-            >
-                <option value="waiter">Mesero</option>
-                <option value="kitchen">Cocina</option>
-                <option value="admin">Admin</option>
-            </select>
-        )
-    }
-
-    const roleBadge = getRoleBadge(role)
-    return (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize border ${roleBadge.className}`}>
-            <Shield size={12} className="mr-1" />
-            <span>{roleBadge.label}</span>
-        </span>
-    )
-}
-
+// --- Subcomponent: Staff Status Badge ---
 function StaffStatusBadge({ isActive }: Readonly<{ isActive: boolean }>) {
     if (isActive) {
         return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#0D2821] text-[#2DD4BF] border border-[#2DD4BF]/30 shrink-0 select-none">
+                <span className="w-2 h-2 rounded-full bg-[#2DD4BF] animate-pulse" />
                 <span>Activo</span>
             </span>
         )
     }
 
     return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#2D121B] text-[#FF5C7A] border border-[#FF5C7A]/30 shrink-0 select-none">
+            <span className="w-2 h-2 rounded-full bg-[#FF5C7A]" />
             <span>Inactivo</span>
         </span>
     )
 }
 
-interface StaffActionButtonsProps {
+// --- Subcomponent: Staff Card (Single Column View) ---
+interface StaffCardProps {
     profile: Profile
     isCurrentUser: boolean
     isEditing: boolean
-    isActive: boolean
-    toggleTitle: string
+    selectedRole: string
     onEditClick: (profile: Profile) => void
     onSaveRole: (id: string) => void
     onCancelEdit: () => void
+    onChangeRole: (role: string) => void
     onToggleStatus: (profile: Profile) => void
     onDeleteStaff: (profile: Profile) => void
-}
-
-function StaffActionButtons({
-    profile,
-    isCurrentUser,
-    isEditing,
-    isActive,
-    toggleTitle,
-    onEditClick,
-    onSaveRole,
-    onCancelEdit,
-    onToggleStatus,
-    onDeleteStaff
-}: Readonly<StaffActionButtonsProps>) {
-    if (isEditing) {
-        return (
-            <div className="flex items-center gap-2 w-full justify-end sm:w-auto">
-                <button
-                    type="button"
-                    onClick={() => onSaveRole(profile.id)}
-                    aria-label={`Guardar rol para ${profile.full_name || profile.email}`}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 rounded-xl cursor-pointer transition-colors active:scale-95"
-                    title="Guardar"
-                >
-                    <Check size={16} />
-                    <span>Guardar</span>
-                </button>
-                <button
-                    type="button"
-                    onClick={onCancelEdit}
-                    aria-label="Cancelar edición de rol"
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 rounded-xl cursor-pointer transition-colors active:scale-95"
-                    title="Cancelar"
-                >
-                    <X size={16} />
-                    <span>Cancelar</span>
-                </button>
-            </div>
-        )
-    }
-
-    return (
-        <div className="flex items-center gap-1.5 sm:gap-2 w-full justify-end sm:w-auto flex-wrap">
-            <button
-                type="button"
-                onClick={() => onEditClick(profile)}
-                aria-label={`Editar rol de ${profile.full_name || profile.email}`}
-                className="px-3 py-1.5 text-gray-300 hover:text-white bg-gray-800/80 hover:bg-gray-700 border border-gray-700/60 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium active:scale-95"
-                title="Editar Rol"
-            >
-                <Edit2 size={15} />
-                <span>Rol</span>
-            </button>
-
-            <button
-                type="button"
-                disabled={isCurrentUser}
-                onClick={() => void onToggleStatus(profile)}
-                aria-label={toggleTitle}
-                className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium active:scale-95 ${
-                    isActive
-                        ? 'text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300'
-                        : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300'
-                }`}
-                title={toggleTitle}
-            >
-                {isActive ? <UserX size={15} /> : <UserCheck size={15} />}
-                <span>{isActive ? 'Desactivar' : 'Reactivar'}</span>
-            </button>
-
-            <button
-                type="button"
-                disabled={isCurrentUser}
-                onClick={() => void onDeleteStaff(profile)}
-                aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : `Eliminar a ${profile.full_name || profile.email}`}
-                className="px-3 py-1.5 text-rose-400 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 hover:text-rose-300 rounded-xl transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs font-medium active:scale-95"
-                title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar personal'}
-            >
-                <Trash2 size={15} />
-                <span>Eliminar</span>
-            </button>
-        </div>
-    )
 }
 
 function StaffCard({
@@ -369,61 +240,152 @@ function StaffCard({
     onChangeRole,
     onToggleStatus,
     onDeleteStaff
-}: Readonly<StaffItemProps>) {
+}: Readonly<StaffCardProps>) {
     const isActive = profile.is_active !== false
-    const toggleTitle = getToggleActionTitle(isCurrentUser, isActive)
+    const roleBadge = getRoleBadge(profile.role)
+
+    const formattedDate = profile.created_at
+        ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es })
+        : '-'
 
     return (
-        <div className="bg-[#1A1D21] rounded-2xl border border-gray-800/80 p-4 sm:p-5 shadow-lg hover:border-gray-700/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-            {/* Left section: Avatar & Employee Info */}
-            <div className="flex items-center gap-3.5 min-w-0 md:w-5/12">
-                <div className="bg-gradient-to-br from-gray-700 to-gray-800 h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-inner shrink-0 border border-gray-700/50">
-                    {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <p className="text-white font-semibold text-sm truncate">{profile.full_name || 'Sin Nombre'}</p>
-                        {isCurrentUser && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
-                                Tú
-                            </span>
-                        )}
+        <div className="bg-[#14171E] rounded-2xl border border-[#202530] p-5 shadow-lg hover:border-gray-700/70 transition-all space-y-4">
+            {/* Top row: Avatar, Info & Status */}
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-12 h-12 rounded-xl bg-[#202533] text-white font-bold text-lg flex items-center justify-center shrink-0 border border-gray-700/40 shadow-inner">
+                        {profile.full_name?.charAt(0).toUpperCase() || '?'}
                     </div>
-                    <p className="text-gray-400 text-xs truncate mt-0.5 break-all">{profile.email}</p>
-                </div>
-            </div>
-
-            {/* Middle section: Role, Status & Date */}
-            <div className="flex items-center justify-between md:justify-center gap-3 sm:gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-gray-800/60 text-xs md:w-3/12">
-                <div className="flex items-center gap-2">
-                    <span className="text-gray-500 font-medium md:hidden">Rol:</span>
-                    <StaffRoleBadge
-                        role={profile.role}
-                        isEditing={isEditing}
-                        selectedRole={selectedRole}
-                        onChangeRole={onChangeRole}
-                    />
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-white font-bold text-base truncate">{profile.full_name || 'Sin Nombre'}</h3>
+                            {isCurrentUser && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/20 text-[#FBBF24] border border-[#FBBF24]/40 shrink-0">
+                                    Tú
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-gray-400 text-sm truncate mt-0.5">{profile.email}</p>
+                    </div>
                 </div>
                 <StaffStatusBadge isActive={isActive} />
-                <span className="text-gray-500 text-[11px] hidden sm:inline whitespace-nowrap">
-                    {profile.created_at ? format(new Date(profile.created_at), 'dd MMM yyyy', { locale: es }) : '-'}
-                </span>
             </div>
 
-            {/* Right section: Action Buttons */}
-            <div className="pt-3 md:pt-0 border-t md:border-t-0 border-gray-800/60 flex items-center justify-end md:w-4/12 shrink-0">
-                <StaffActionButtons
-                    profile={profile}
-                    isCurrentUser={isCurrentUser}
-                    isEditing={isEditing}
-                    isActive={isActive}
-                    toggleTitle={toggleTitle}
-                    onEditClick={onEditClick}
-                    onSaveRole={onSaveRole}
-                    onCancelEdit={onCancelEdit}
-                    onToggleStatus={onToggleStatus}
-                    onDeleteStaff={onDeleteStaff}
-                />
+            {/* Middle row: Role & Registration Date */}
+            <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-800/60 text-xs">
+                <div className="flex items-center gap-2">
+                    <span className="text-gray-400 font-medium">Rol:</span>
+                    {isEditing ? (
+                        <select
+                            aria-label="Seleccionar rol"
+                            value={selectedRole}
+                            onChange={(e) => onChangeRole(e.target.value)}
+                            className="bg-[#0D0F13] text-white border border-gray-600 rounded-lg px-2.5 py-1 text-xs focus:border-[#FBBF24] outline-none"
+                        >
+                            <option value="waiter">Mesero</option>
+                            <option value="kitchen">Cocina</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    ) : (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize border ${roleBadge.className}`}>
+                            <Shield size={13} />
+                            <span>{roleBadge.label}</span>
+                        </span>
+                    )}
+                </div>
+
+                <span className="h-3.5 w-px bg-gray-800 hidden sm:inline-block" aria-hidden="true" />
+
+                <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+                    <Calendar size={14} className="text-gray-400 shrink-0" />
+                    <span>Alta: {formattedDate}</span>
+                </div>
+            </div>
+
+            {/* Bottom row: Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-800/60">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                    {isEditing ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => onSaveRole(profile.id)}
+                                aria-label={`Guardar rol para ${profile.full_name || profile.email}`}
+                                className="px-4 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                                <Check size={14} />
+                                <span>Guardar</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onCancelEdit}
+                                aria-label="Cancelar edición de rol"
+                                className="px-4 py-2 bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                                <X size={14} />
+                                <span>Cancelar</span>
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => onEditClick(profile)}
+                                aria-label={`Editar rol de ${profile.full_name || profile.email}`}
+                                className="px-4 py-2 rounded-xl border border-gray-700/80 hover:border-gray-500 bg-[#161922]/50 text-gray-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                            >
+                                <Pencil size={13} />
+                                <span>Cambiar rol</span>
+                            </button>
+
+                            {isActive ? (
+                                isCurrentUser ? (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        aria-label="Tu cuenta de administrador"
+                                        className="px-4 py-2 rounded-xl border border-gray-800 text-gray-500 bg-gray-900/40 text-xs font-medium flex items-center gap-2 cursor-not-allowed"
+                                    >
+                                        <User size={13} />
+                                        <span>Tu cuenta</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => void onToggleStatus(profile)}
+                                        aria-label="Desactivar acceso"
+                                        className="px-4 py-2 rounded-xl border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 bg-amber-950/20 text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                                    >
+                                        <UserX size={13} />
+                                        <span>Desactivar</span>
+                                    </button>
+                                )
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => void onToggleStatus(profile)}
+                                    aria-label="Reactivar acceso"
+                                    className="px-4 py-2 rounded-xl border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 bg-emerald-950/20 text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                                >
+                                    <UserCheck size={13} />
+                                    <span>Reactivar</span>
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {/* More options button (Safe delete) */}
+                <button
+                    type="button"
+                    disabled={isCurrentUser}
+                    onClick={() => void onDeleteStaff(profile)}
+                    aria-label={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : `Eliminar a ${profile.full_name || profile.email}`}
+                    title={isCurrentUser ? 'No puedes eliminar tu propia cuenta' : 'Eliminar personal'}
+                    className="p-2 border border-gray-700/80 hover:border-gray-500 text-gray-400 hover:text-rose-400 rounded-xl transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                    <MoreVertical size={16} />
+                </button>
             </div>
         </div>
     )
@@ -434,21 +396,37 @@ export default function StaffManagement() {
     const queryClient = useQueryClient()
     const { showAlert, showConfirm } = useUI()
     const { user } = useAuth()
+    const tenantCtx = useTenantOptional()
+    const tenant = tenantCtx?.tenant
 
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
     const [editingId, setEditingId] = useState<string | null>(null)
     const [selectedRole, setSelectedRole] = useState<string>('')
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
-    // 1. Fetch Profiles with Filter
-    const { data: profiles, isLoading, error } = useQuery({
-        queryKey: ['staff', statusFilter],
+    // 1. Fetch all profiles once
+    const { data: allProfiles, isLoading, error } = useQuery({
+        queryKey: ['staff'],
         queryFn: async () => {
-            const queryParam = statusFilter === 'all' ? '' : `?status=${statusFilter}`
-            const data = await apiFetch(`/auth/staff${queryParam}`)
+            const data = await apiFetch('/auth/staff')
             return data as Profile[]
         }
     })
+
+    const profilesList = allProfiles || []
+    const totalCount = profilesList.length
+    const activeCount = profilesList.filter(p => p.is_active !== false).length
+    const inactiveCount = profilesList.filter(p => p.is_active === false).length
+
+    const filteredProfiles = useMemo(() => {
+        if (statusFilter === 'active') {
+            return profilesList.filter(p => p.is_active !== false)
+        }
+        if (statusFilter === 'inactive') {
+            return profilesList.filter(p => p.is_active === false)
+        }
+        return profilesList
+    }, [profilesList, statusFilter])
 
     // 2. Update Role Mutation
     const updateRoleMutation = useMutation({
@@ -564,54 +542,98 @@ export default function StaffManagement() {
     if (error) return <div className="p-8 text-red-500">Error al cargar personal</div>
 
     return (
-        <div className="w-full p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-5">
-                <div className="min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
-                        <Users className="text-[#FBBF24] shrink-0" size={28} />
-                        <span>Gestión de Personal</span>
+        <div className="w-full max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            {/* Top Restaurant Subtitle / Plan Tag */}
+            <div className="space-y-0.5">
+                <p className="text-sm font-bold text-white tracking-wide">{tenant?.name || 'Restaurante Demo'}</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                    {tenant?.slug ? `${tenant.slug} • ${tenant.plan_id || 'ENTERPRISE'}` : 'DEMO • ENTERPRISE'}
+                </p>
+            </div>
+
+            {/* Main Header */}
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <Users className="text-[#FBBF24] shrink-0" size={30} />
+                        <span>Gestión de personal</span>
                     </h1>
                     <p className="text-gray-400 text-xs sm:text-sm mt-1">
-                        Administra roles, accesos activos y desvinculaciones del equipo.
+                        Administra roles y accesos del equipo.
                     </p>
                 </div>
+
                 <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(true)}
                     aria-label="Crear nuevo usuario"
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FBBF24] text-black font-bold text-sm rounded-xl hover:bg-yellow-400 active:scale-95 transition-all shadow-lg shadow-yellow-500/10 cursor-pointer self-start sm:self-auto shrink-0"
                 >
-                    <UserPlus size={18} />
-                    <span>Nuevo Usuario</span>
+                    <Plus size={18} className="stroke-[2.5]" />
+                    <span>Nuevo usuario</span>
                 </button>
             </header>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                {(['all', 'active', 'inactive'] as StatusFilter[]).map((filter) => {
-                    const label = getFilterLabel(filter)
-                    const isSelected = statusFilter === filter
-                    return (
-                        <button
-                            type="button"
-                            key={filter}
-                            onClick={() => setStatusFilter(filter)}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                                isSelected
-                                    ? 'bg-[#FBBF24] text-black shadow-md font-bold'
-                                    : 'bg-[#1A1D21] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    )
-                })}
+            {/* Filter Tabs with Count Badges */}
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 custom-scrollbar">
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('all')}
+                    aria-label="Todos"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                        statusFilter === 'all'
+                            ? 'bg-[#FBBF24] text-black shadow-md font-bold'
+                            : 'bg-[#14171E] text-gray-400 hover:text-white border border-[#202530] hover:border-gray-700'
+                    }`}
+                >
+                    <span>Todos</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        statusFilter === 'all' ? 'bg-black/20 text-black' : 'bg-[#222836] text-gray-300'
+                    }`}>
+                        {totalCount}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('active')}
+                    aria-label="Activos"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                        statusFilter === 'active'
+                            ? 'bg-[#FBBF24] text-black shadow-md font-bold'
+                            : 'bg-[#14171E] text-gray-400 hover:text-white border border-[#202530] hover:border-gray-700'
+                    }`}
+                >
+                    <span>Activos</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        statusFilter === 'active' ? 'bg-black/20 text-black' : 'bg-[#222836] text-gray-300'
+                    }`}>
+                        {activeCount}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('inactive')}
+                    aria-label="Inactivos"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                        statusFilter === 'inactive'
+                            ? 'bg-[#FBBF24] text-black shadow-md font-bold'
+                            : 'bg-[#14171E] text-gray-400 hover:text-white border border-[#202530] hover:border-gray-700'
+                    }`}
+                >
+                    <span>Inactivos</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        statusFilter === 'inactive' ? 'bg-black/20 text-black' : 'bg-[#222836] text-gray-300'
+                    }`}>
+                        {inactiveCount}
+                    </span>
+                </button>
             </div>
 
-            {/* Single-Column User Cards List */}
-            <div className="flex flex-col gap-3.5 w-full">
-                {profiles?.map((profile) => (
+            {/* Single Column User Cards */}
+            <div className="space-y-4">
+                {filteredProfiles.map((profile) => (
                     <StaffCard
                         key={profile.id}
                         profile={profile}
@@ -628,10 +650,17 @@ export default function StaffManagement() {
                 ))}
             </div>
 
-            {profiles?.length === 0 && (
-                <div className="p-8 text-center text-gray-500 bg-[#1A1D21] rounded-2xl border border-gray-800">
+            {filteredProfiles.length === 0 && (
+                <div className="p-8 text-center text-gray-500 bg-[#14171E] rounded-2xl border border-[#202530]">
                     No se encontró personal para el filtro seleccionado.
                 </div>
+            )}
+
+            {/* Total Count Footer Note */}
+            {filteredProfiles.length > 0 && (
+                <p className="text-xs text-gray-500 pt-2 font-medium">
+                    {filteredProfiles.length} {filteredProfiles.length === 1 ? 'usuario en total' : 'usuarios en total'}
+                </p>
             )}
 
             {/* Create User Modal */}

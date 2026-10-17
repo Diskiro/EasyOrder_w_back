@@ -153,3 +153,8 @@ export const useTenant = (): TenantContextType => {
     }
     return context;
 };
+
+export const useTenantOptional = (): TenantContextType | null => {
+    const context = useContext(TenantContext);
+    return context || null;
+};
